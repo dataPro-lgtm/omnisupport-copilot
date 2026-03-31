@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12",
+  "$id": "omni://data/seed_manifests/source_manifest/v1",
+  "title": "SourceManifest",
+  "description": "OmniSupport Copilot — 种子数据清单 v1。描述一批源资产的来源、类型、数量和采集配置。",
+  "type": "object",
+  "required": [
+    "manifest_id", "schema_version", "batch_id",
+    "modality", "source_type", "license_tag",
+    "assets", "created_at", "owner"
+  ],
+  "properties": {
+    "manifest_id": {
+      "type": "string",
+      "description": "清单唯一 ID",
+      "pattern": "^manifest-[a-z0-9_]+-[0-9]{8}-[0-9]{3}$"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "source_manifest_v1"
+    },
+    "batch_id": {
+      "type": "string",
+      "description": "采集批次 ID"
+    },
+    "modality": {
+      "type": "string",
+      "enum": ["document", "audio", "video", "structured", "multimodal"]
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "help_center", "faq", "release_notes", "api_doc", "pdf_manual",
+        "community", "ticket_export", "call_recording", "tts_synthetic",
+        "tutorial_video", "screencast", "other"
+      ]
+    },
+    "product_line": {
+      "type": "string",
+      "enum": ["northstar_workspace", "northstar_edge_gateway", "northstar_studio", "cross_product", "unknown"]
+    },
+    "license_tag": {
+      "type": "string",
+      "enum": ["public_domain", "cc_by", "cc_by_sa", "course_synthetic", "proprietary", "unknown"]
+    },
+    "canonization_status": {
+      "type": "string",
+      "enum": ["raw", "in_progress", "canonized", "rejected"],
+      "description": "规范化处理状态"
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["source_id", "source_url_or_path", "asset_type"],
+        "properties": {
+          "source_id": {"type": "string"},
+          "source_url_or_path": {"type": "string"},
+          "asset_type": {"type": "string"},
+          "size_bytes": {"type": ["integer", "null"]},
+          "checksum_sha256": {"type": ["string", "null"]},
+          "notes": {"type": "string"}
+        }
+      }
+    },
+    "ingest_config": {
+      "type": "object",
+      "description": "采集配置",
+      "properties": {
+        "parser": {"type": "string", "enum": ["docling", "unstructured", "custom", "whisper", "ffmpeg"]},
+        "chunk_size": {"type": "integer"},
+        "chunk_overlap": {"type": "integer"},
+        "pii_scan": {"type": "boolean"}
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

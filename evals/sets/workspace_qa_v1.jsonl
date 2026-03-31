@@ -1,0 +1,12 @@
+{"case_id": "WS-001", "query": "如何在 Northstar Workspace 中配置 SSO 单点登录？", "product_line": "northstar_workspace", "min_expected_score": 0.5, "tags": ["auth", "sso", "configuration"]}
+{"case_id": "WS-002", "query": "Workspace API 的速率限制是多少？", "product_line": "northstar_workspace", "min_expected_score": 0.5, "tags": ["api", "rate-limit"]}
+{"case_id": "WS-003", "query": "工单 WS-AUTH-001 错误码代表什么含义？", "product_line": "northstar_workspace", "min_expected_score": 0.5, "tags": ["error-code", "auth"]}
+{"case_id": "WS-004", "query": "如何为新用户批量导入账号？", "product_line": "northstar_workspace", "min_expected_score": 0.4, "tags": ["admin", "user-management"]}
+{"case_id": "WS-005", "query": "Webhook 事件推送失败如何排查？", "product_line": "northstar_workspace", "min_expected_score": 0.4, "tags": ["webhook", "troubleshooting"]}
+{"case_id": "EG-001", "query": "EG-3000 设备启动时报 EG-BOOT-004 错误如何处理？", "product_line": "northstar_edge_gateway", "min_expected_score": 0.5, "tags": ["error-code", "boot", "edge"]}
+{"case_id": "EG-002", "query": "Edge Gateway 固件升级失败后如何回滚？", "product_line": "northstar_edge_gateway", "min_expected_score": 0.5, "tags": ["firmware", "rollback"]}
+{"case_id": "EG-003", "query": "EG-3000 接线图在哪里可以找到？", "product_line": "northstar_edge_gateway", "min_expected_score": 0.3, "tags": ["installation", "wiring"]}
+{"case_id": "ST-001", "query": "Studio 工作流调度器报 ST-SCHED-005 错误是什么原因？", "product_line": "northstar_studio", "min_expected_score": 0.5, "tags": ["error-code", "scheduler"]}
+{"case_id": "ST-002", "query": "如何在 Studio 中配置与 Workspace 的集成？", "product_line": "northstar_studio", "min_expected_score": 0.4, "tags": ["integration", "configuration"]}
+{"case_id": "CROSS-001", "query": "Northstar 产品有哪些 SLA 等级？", "product_line": "any", "min_expected_score": 0.3, "tags": ["sla", "pricing"]}
+{"case_id": "CROSS-002", "query": "如何提交 P1 紧急支持工单？", "product_line": "any", "min_expected_score": 0.5, "tags": ["ticket", "p1", "escalation"]}

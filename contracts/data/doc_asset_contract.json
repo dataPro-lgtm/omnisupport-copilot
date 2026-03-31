@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12",
+  "$id": "omni://contracts/data/doc_asset/v1",
+  "title": "DocAssetContract",
+  "description": "OmniSupport Copilot — 文档资产数据契约 v1 (PDF / HTML / FAQ / Release Notes)",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "source_id", "asset_type", "schema_version",
+    "source_fingerprint", "ingest_batch_id", "license_tag",
+    "source_url", "modality", "pii_level", "quality_gate", "owner"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string",
+      "description": "全局唯一资产 ID，格式 doc:{namespace}:{sha256[:12]}",
+      "pattern": "^doc:[a-z0-9_]+:[a-f0-9]{12}$"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "doc_asset_v1"
+    },
+    "asset_type": {
+      "type": "string",
+      "enum": ["pdf", "html", "faq", "release_notes", "api_doc", "community_post", "other"]
+    },
+    "modality": {
+      "type": "string",
+      "const": "document"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "source_fingerprint": {
+      "type": "string",
+      "description": "SHA-256 of raw bytes",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "ingest_batch_id": {
+      "type": "string",
+      "description": "采集批次 ID，格式: batch-YYYYMMDD-NNN"
+    },
+    "license_tag": {
+      "type": "string",
+      "enum": ["public_domain", "cc_by", "cc_by_sa", "course_synthetic", "proprietary", "unknown"]
+    },
+    "pii_level": {
+      "type": "string",
+      "enum": ["none", "low", "high"],
+      "description": "none=无PII, low=可能含一般信息, high=含敏感PII需脱敏"
+    },
+    "quality_gate": {
+      "type": "string",
+      "enum": ["pass", "warn", "fail", "pending"]
+    },
+    "owner": {
+      "type": "string",
+      "description": "数据负责人 / 团队"
+    },
+    "product_line": {
+      "type": "string",
+      "enum": ["northstar_workspace", "northstar_edge_gateway", "northstar_studio", "cross_product", "unknown"]
+    },
+    "doc_version": {
+      "type": "string",
+      "description": "文档版本号，如 '2.4.1'"
+    },
+    "language": {
+      "type": "string",
+      "default": "en",
+      "description": "ISO 639-1 语言码"
+    },
+    "page_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "raw_object_path": {
+      "type": "string",
+      "description": "MinIO/S3 原始文件路径，格式: s3://bucket/prefix/filename"
+    },
+    "ingest_ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "采集时间戳 UTC ISO-8601"
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "additionalProperties": false
+}

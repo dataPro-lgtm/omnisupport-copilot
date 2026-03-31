@@ -1,0 +1,238 @@
+version: "3.9"
+
+# OmniSupport Copilot — Week01 最小可演进基线
+# 服务启动顺序: postgres → minio → rag_api / tool_api → dagster → otel_collector → phoenix
+# 使用方式: docker compose --env-file infra/env/.env.local up -d
+
+networks:
+  omni_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:
+  dagster_data:
+  phoenix_data:
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. PostgreSQL — 结构化存储 + pgvector 向量检索
+  # ─────────────────────────────────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: omni_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-omni}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omnipass}
+      POSTGRES_DB: ${POSTGRES_DB:-omnisupport}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    networks:
+      - omni_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-omni} -d ${POSTGRES_DB:-omnisupport}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. MinIO — 对象存储 (S3 兼容), raw zone 与中间制品落盘
+  # ─────────────────────────────────────────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: omni_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web Console
+    volumes:
+      - minio_data:/data
+    networks:
+      - omni_net
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 3. MinIO Init — 自动创建 bucket 分区
+  # ─────────────────────────────────────────────────────────────────────────────
+  minio_init:
+    image: minio/mc:latest
+    container_name: omni_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - omni_net
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin};
+        mc mb --ignore-existing local/omni-raw-documents;
+        mc mb --ignore-existing local/omni-raw-audio;
+        mc mb --ignore-existing local/omni-raw-video;
+        mc mb --ignore-existing local/omni-raw-tickets;
+        mc mb --ignore-existing local/omni-parsed;
+        mc mb --ignore-existing local/omni-indexes;
+        mc mb --ignore-existing local/omni-evals;
+        mc mb --ignore-existing local/omni-releases;
+        echo 'MinIO buckets initialized';
+      "
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 4. RAG API — FastAPI 检索增强生成服务
+  # ─────────────────────────────────────────────────────────────────────────────
+  rag_api:
+    build:
+      context: ../services/rag_api
+      dockerfile: Dockerfile
+    container_name: omni_rag_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-omni}:${POSTGRES_PASSWORD:-omnipass}@postgres:5432/${POSTGRES_DB:-omnisupport}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      OTEL_SERVICE_NAME: rag_api
+      RELEASE_ID: ${RELEASE_ID:-dev-local}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - omni_net
+    volumes:
+      - ../services/rag_api:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 5. Tool API — 工单工具 + HITL + 审计日志服务
+  # ─────────────────────────────────────────────────────────────────────────────
+  tool_api:
+    build:
+      context: ../services/tool_api
+      dockerfile: Dockerfile
+    container_name: omni_tool_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-omni}:${POSTGRES_PASSWORD:-omnipass}@postgres:5432/${POSTGRES_DB:-omnisupport}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      OTEL_SERVICE_NAME: tool_api
+      RELEASE_ID: ${RELEASE_ID:-dev-local}
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - omni_net
+    volumes:
+      - ../services/tool_api:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 6. Dagster — 资产化编排 (ingestion / parse / lakehouse / indexing)
+  # ─────────────────────────────────────────────────────────────────────────────
+  dagster:
+    image: dagster/dagster-k8s:latest
+    container_name: omni_dagster
+    restart: unless-stopped
+    command: dagster dev -h 0.0.0.0 -p 3000 -m pipelines
+    working_dir: /opt/dagster/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-omni}:${POSTGRES_PASSWORD:-omnipass}@postgres:5432/${POSTGRES_DB:-omnisupport}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - omni_net
+    volumes:
+      - ../pipelines:/opt/dagster/app/pipelines
+      - dagster_data:/opt/dagster/dagster_home
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 7. OpenTelemetry Collector — 统一 trace / metric / log 采集
+  # ─────────────────────────────────────────────────────────────────────────────
+  otel_collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: omni_otel_collector
+    restart: unless-stopped
+    command: ["--config=/etc/otel/config.yaml"]
+    ports:
+      - "4317:4317"   # gRPC OTLP
+      - "4318:4318"   # HTTP OTLP
+      - "8888:8888"   # Prometheus metrics
+    volumes:
+      - ../observability/otel/config.yaml:/etc/otel/config.yaml:ro
+    networks:
+      - omni_net
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 8. Phoenix (Arize) — AI 请求可观测 + bad case replay
+  # ─────────────────────────────────────────────────────────────────────────────
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: omni_phoenix
+    restart: unless-stopped
+    environment:
+      PHOENIX_PORT: 6006
+      PHOENIX_GRPC_PORT: 4317
+    ports:
+      - "6006:6006"
+    volumes:
+      - phoenix_data:/data
+    networks:
+      - omni_net
+    depends_on:
+      - otel_collector
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 9. Ticket Simulator — 工单模拟器 / seed loader
+  # ─────────────────────────────────────────────────────────────────────────────
+  ticket_simulator:
+    build:
+      context: ../data/synthetic_generators
+      dockerfile: Dockerfile
+    container_name: omni_ticket_simulator
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-omni}:${POSTGRES_PASSWORD:-omnipass}@postgres:5432/${POSTGRES_DB:-omnisupport}
+      SEED_MANIFEST_PATH: /manifests
+      TICKET_COUNT: ${SEED_TICKET_COUNT:-500}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - omni_net
+    volumes:
+      - ../data/seed_manifests:/manifests:ro
+      - ../data/canonization:/canonization:ro

@@ -1,0 +1,94 @@
+{
+  "name": "create_ticket",
+  "version": "v1.0",
+  "description": "为当前用户创建新的支持工单。高优先级工单（P1/P2）会自动触发人工介入通知。创建成功后返回工单 ID。",
+  "input_schema": {
+    "type": "object",
+    "required": ["subject", "description", "priority", "product_line", "category"],
+    "properties": {
+      "subject": {
+        "type": "string",
+        "maxLength": 512,
+        "description": "工单标题"
+      },
+      "description": {
+        "type": "string",
+        "maxLength": 8192,
+        "description": "问题详细描述"
+      },
+      "priority": {
+        "type": "string",
+        "enum": ["p1_critical", "p2_high", "p3_medium", "p4_low"]
+      },
+      "product_line": {
+        "type": "string",
+        "enum": ["northstar_workspace", "northstar_edge_gateway", "northstar_studio", "cross_product"]
+      },
+      "category": {
+        "type": "string",
+        "enum": [
+          "installation", "configuration", "connectivity", "authentication",
+          "billing", "feature_request", "bug_report", "documentation",
+          "performance", "security", "other"
+        ]
+      },
+      "product_version": {
+        "type": "string"
+      },
+      "error_codes": {
+        "type": "array",
+        "items": {"type": "string"}
+      },
+      "asset_ids": {
+        "type": "array",
+        "items": {"type": "string"}
+      },
+      "idempotency_key": {
+        "type": "string",
+        "description": "客户端提供的幂等键，防止重复提交"
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["ticket_id", "status", "created_at", "trace_id"],
+    "properties": {
+      "ticket_id": {"type": "string"},
+      "status": {"type": "string"},
+      "sla_due_at": {"type": ["string", "null"]},
+      "created_at": {"type": "string"},
+      "hitl_triggered": {"type": "boolean"},
+      "trace_id": {"type": "string"},
+      "release_id": {"type": "string"}
+    }
+  },
+  "allowed_roles": ["end_user", "support_agent"],
+  "idempotent": true,
+  "idempotency_key_fields": ["idempotency_key"],
+  "audit_fields": {
+    "log_input": true,
+    "log_output": true,
+    "log_actor": true,
+    "retention_days": 365
+  },
+  "failure_codes": {
+    "VALIDATION_ERROR": "输入参数校验失败",
+    "DUPLICATE_TICKET": "幂等键已存在，返回原工单",
+    "QUOTA_EXCEEDED": "工单配额已超限",
+    "DB_UNAVAILABLE": "数据库暂时不可用"
+  },
+  "hitl_conditions": [
+    {
+      "condition": "priority == 'p1_critical'",
+      "action": "pause_and_notify"
+    },
+    {
+      "condition": "priority == 'p2_high' AND category == 'security'",
+      "action": "require_approval"
+    }
+  ],
+  "rate_limit": {
+    "calls_per_minute": 5,
+    "calls_per_hour": 20
+  }
+}

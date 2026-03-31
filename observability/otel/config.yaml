@@ -1,0 +1,65 @@
+# OmniSupport Copilot — OpenTelemetry Collector 配置
+# 接收 RAG API / Tool API 的 traces，转发至 Phoenix (Arize)
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # 批量发送，减少网络开销
+  batch:
+    timeout: 5s
+    send_batch_size: 1000
+
+  # 资源属性注入
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: dev
+        action: upsert
+
+  # 内存限制（防止 OOM）
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+
+exporters:
+  # Phoenix (Arize) — AI 请求可观测
+  otlp/phoenix:
+    endpoint: phoenix:4317
+    tls:
+      insecure: true
+
+  # 调试用：输出到 stdout（开发环境开启）
+  logging:
+    verbosity: detailed
+
+  # Prometheus metrics 暴露
+  prometheus:
+    endpoint: "0.0.0.0:8888"
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+service:
+  extensions: [health_check, pprof]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [otlp/phoenix, logging]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus, logging]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [logging]

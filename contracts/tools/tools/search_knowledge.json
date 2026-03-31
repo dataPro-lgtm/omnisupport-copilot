@@ -1,0 +1,92 @@
+{
+  "name": "search_knowledge",
+  "version": "v1.0",
+  "description": "在 OmniSupport 知识库中混合检索相关文档片段，返回带证据引用的结构化结果。用于回答用户关于产品使用、故障排查、配置和 API 的问题。",
+  "input_schema": {
+    "type": "object",
+    "required": ["query"],
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "用户问题或检索关键词",
+        "maxLength": 2048
+      },
+      "product_line": {
+        "type": "string",
+        "enum": ["northstar_workspace", "northstar_edge_gateway", "northstar_studio", "any"],
+        "default": "any",
+        "description": "限定检索的产品线"
+      },
+      "modalities": {
+        "type": "array",
+        "items": {"type": "string", "enum": ["document", "audio", "video"]},
+        "default": ["document"],
+        "description": "检索的数据模态"
+      },
+      "top_k": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20,
+        "default": 5
+      },
+      "min_score": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "default": 0.6
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["results", "trace_id", "release_id"],
+    "properties": {
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["chunk_id", "content", "score", "evidence_anchor"],
+          "properties": {
+            "chunk_id": {"type": "string"},
+            "content": {"type": "string"},
+            "score": {"type": "number"},
+            "evidence_anchor": {
+              "type": "object",
+              "required": ["source_id", "source_url", "page_no", "section_path"],
+              "properties": {
+                "source_id": {"type": "string"},
+                "source_url": {"type": "string"},
+                "page_no": {"type": ["integer", "null"]},
+                "section_path": {"type": "string"},
+                "doc_version": {"type": "string"}
+              }
+            }
+          }
+        }
+      },
+      "trace_id": {"type": "string"},
+      "release_id": {"type": "string"}
+    }
+  },
+  "allowed_roles": ["end_user", "support_agent", "admin"],
+  "idempotent": true,
+  "idempotency_key_fields": ["query", "product_line", "top_k"],
+  "audit_fields": {
+    "log_input": true,
+    "log_output": true,
+    "log_actor": true,
+    "retention_days": 90
+  },
+  "failure_codes": {
+    "RETRIEVAL_EMPTY": "检索结果为空，可能查询过于特殊或知识库未覆盖",
+    "SCORE_TOO_LOW": "所有结果得分低于 min_score 阈值",
+    "INDEX_UNAVAILABLE": "向量索引不可用，请联系管理员",
+    "INVALID_QUERY": "查询参数格式不合法"
+  },
+  "hitl_conditions": [
+    {
+      "condition": "所有检索结果得分 < 0.4",
+      "action": "pause_and_notify"
+    }
+  ]
+}

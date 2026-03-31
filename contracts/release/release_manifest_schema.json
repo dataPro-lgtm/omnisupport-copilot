@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12",
+  "$id": "omni://contracts/release/release_manifest/v1",
+  "title": "ReleaseManifest",
+  "description": "OmniSupport Copilot — 统一发布清单 v1。绑定数据版本、索引版本、Prompt 版本与评测结果，是回滚的唯一基准。",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "release_id", "schema_version", "env",
+    "data_release_id", "index_release_id",
+    "prompt_release_id", "eval_run_id",
+    "git_sha", "created_at", "created_by", "status"
+  ],
+  "properties": {
+    "release_id": {
+      "type": "string",
+      "description": "发布唯一 ID，格式: {env}-{YYYYMMDD}-{seq:03d}",
+      "pattern": "^(dev|staging|prod)-[0-9]{8}-[0-9]{3}$"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "release_manifest_v1"
+    },
+    "env": {
+      "type": "string",
+      "enum": ["dev", "staging", "prod"]
+    },
+    "data_release_id": {
+      "type": "string",
+      "description": "数据层版本标识"
+    },
+    "index_release_id": {
+      "type": "string",
+      "description": "向量/倒排索引版本标识"
+    },
+    "prompt_release_id": {
+      "type": "string",
+      "description": "Prompt 模板版本标识"
+    },
+    "eval_run_id": {
+      "type": "string",
+      "description": "关联的评测运行 ID"
+    },
+    "git_sha": {
+      "type": "string",
+      "description": "代码版本 git commit SHA",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "发布者标识 (人员 ID 或 CI job ID)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "active", "rolled_back", "deprecated"]
+    },
+    "previous_release_id": {
+      "type": ["string", "null"],
+      "description": "上一个活跃 release，用于快速回滚"
+    },
+    "eval_summary": {
+      "type": "object",
+      "description": "评测关键指标快照",
+      "properties": {
+        "faithfulness": {"type": "number"},
+        "answer_relevance": {"type": "number"},
+        "retrieval_precision": {"type": "number"},
+        "regression_pass_rate": {"type": "number"},
+        "total_cases": {"type": "integer"},
+        "failed_cases": {"type": "integer"}
+      }
+    },
+    "rollout_notes": {
+      "type": "string",
+      "description": "发布说明"
+    },
+    "rollback_reason": {
+      "type": ["string", "null"],
+      "description": "若已回滚，记录原因"
+    },
+    "services": {
+      "type": "object",
+      "description": "各服务镜像版本",
+      "properties": {
+        "rag_api": {"type": "string"},
+        "tool_api": {"type": "string"},
+        "admin_api": {"type": "string"}
+      }
+    }
+  },
+  "additionalProperties": false
+}

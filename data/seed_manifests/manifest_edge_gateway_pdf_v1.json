@@ -1,0 +1,45 @@
+{
+  "manifest_id": "manifest-edge-gateway-pdf-20260331-001",
+  "schema_version": "source_manifest_v1",
+  "batch_id": "batch-20260331-001",
+  "modality": "document",
+  "source_type": "pdf_manual",
+  "product_line": "northstar_edge_gateway",
+  "license_tag": "course_synthetic",
+  "canonization_status": "in_progress",
+  "assets": [
+    {
+      "source_id": "doc:edge:000000000001",
+      "source_url_or_path": "s3://omni-raw-documents/edge-gateway/manuals/EG-3000-installation-guide.pdf",
+      "asset_type": "pdf",
+      "size_bytes": null,
+      "checksum_sha256": null,
+      "notes": "EG-3000 安装手册 — 含接线图、规格表"
+    },
+    {
+      "source_id": "doc:edge:000000000002",
+      "source_url_or_path": "s3://omni-raw-documents/edge-gateway/manuals/EG-3000-troubleshooting.pdf",
+      "asset_type": "pdf",
+      "size_bytes": null,
+      "checksum_sha256": null,
+      "notes": "故障排查手册 — 含错误码表"
+    },
+    {
+      "source_id": "doc:edge:000000000003",
+      "source_url_or_path": "s3://omni-raw-documents/edge-gateway/manuals/EG-3000-firmware-upgrade.pdf",
+      "asset_type": "pdf",
+      "size_bytes": null,
+      "checksum_sha256": null,
+      "notes": "固件升级说明"
+    }
+  ],
+  "ingest_config": {
+    "parser": "docling",
+    "chunk_size": 768,
+    "chunk_overlap": 96,
+    "pii_scan": false
+  },
+  "created_at": "2026-03-31T00:00:00Z",
+  "owner": "course-team",
+  "notes": "Week01 占位清单 — PDF 文件待 Week03 生成/采集；Docling 解析保留表格与图像坐标"
+}

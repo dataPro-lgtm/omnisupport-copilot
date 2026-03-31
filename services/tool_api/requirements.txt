@@ -1,0 +1,11 @@
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+pydantic==2.7.1
+pydantic-settings==2.3.1
+asyncpg==0.29.0
+sqlalchemy[asyncio]==2.0.30
+opentelemetry-sdk==1.24.0
+opentelemetry-exporter-otlp-proto-http==1.24.0
+opentelemetry-instrumentation-fastapi==0.45b0
+python-dotenv==1.0.1
+structlog==24.2.0

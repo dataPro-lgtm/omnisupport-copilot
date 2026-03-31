@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12",
+  "$id": "omni://contracts/data/ticket/v1",
+  "title": "TicketContract",
+  "description": "OmniSupport Copilot — 工单数据契约 v1 (Northstar Systems 虚构业务)",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "ticket_id", "schema_version", "source_id", "ingest_batch_id",
+    "customer_id", "status", "priority", "product_line",
+    "created_at", "pii_level", "quality_gate", "owner"
+  ],
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "description": "全局唯一工单 ID，格式: TKT-{YYYYMMDD}-{seq:06d}",
+      "pattern": "^TKT-[0-9]{8}-[0-9]{6}$"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "ticket_v1"
+    },
+    "source_id": {
+      "type": "string",
+      "description": "原始数据溯源 ID，关联 source_manifest"
+    },
+    "ingest_batch_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "客户 ID，关联 customer_dim"
+    },
+    "org_id": {
+      "type": "string",
+      "description": "组织 ID，关联 entitlement_dim"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "pending", "in_progress", "resolved", "closed", "escalated"]
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["p1_critical", "p2_high", "p3_medium", "p4_low"]
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "installation", "configuration", "connectivity", "authentication",
+        "billing", "feature_request", "bug_report", "documentation",
+        "performance", "security", "other"
+      ]
+    },
+    "product_line": {
+      "type": "string",
+      "enum": ["northstar_workspace", "northstar_edge_gateway", "northstar_studio", "cross_product"]
+    },
+    "product_version": {
+      "type": "string",
+      "description": "受影响产品版本"
+    },
+    "subject": {
+      "type": "string",
+      "maxLength": 512
+    },
+    "description": {
+      "type": "string",
+      "description": "工单描述正文，可能含 PII"
+    },
+    "error_codes": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "关联错误码列表"
+    },
+    "asset_ids": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "关联设备/资产 ID"
+    },
+    "assignee_id": {
+      "type": ["string", "null"]
+    },
+    "sla_tier": {
+      "type": "string",
+      "enum": ["enterprise", "professional", "standard", "free"]
+    },
+    "sla_due_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "resolved_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "pii_level": {
+      "type": "string",
+      "enum": ["none", "low", "high"]
+    },
+    "pii_redacted": {
+      "type": "boolean",
+      "default": false
+    },
+    "quality_gate": {
+      "type": "string",
+      "enum": ["pass", "warn", "fail", "pending"]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12",
+  "$id": "omni://contracts/data/audio_asset/v1",
+  "title": "AudioAssetContract",
+  "description": "OmniSupport Copilot — 音频资产数据契约 v1 (客服通话 / TTS 合成 / 录音转写)",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "call_id", "schema_version", "source_id", "ingest_batch_id",
+    "audio_type", "duration_sec", "pii_level", "pii_redacted",
+    "quality_gate", "owner", "license_tag", "ingest_ts"
+  ],
+  "properties": {
+    "call_id": {
+      "type": "string",
+      "description": "全局唯一通话 ID，格式: CALL-{YYYYMMDD}-{seq:08d}",
+      "pattern": "^CALL-[0-9]{8}-[0-9]{8}$"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "audio_asset_v1"
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "ingest_batch_id": {
+      "type": "string"
+    },
+    "audio_type": {
+      "type": "string",
+      "enum": ["real_call", "tts_synthetic", "interview", "voicenote", "other"]
+    },
+    "duration_sec": {
+      "type": "number",
+      "minimum": 0
+    },
+    "raw_object_path": {
+      "type": ["string", "null"],
+      "description": "原始音频文件路径（若公开音频不可分发则为 null）"
+    },
+    "transcript_object_path": {
+      "type": ["string", "null"],
+      "description": "转写文本文件路径 (.jsonl 格式，含 utterances)"
+    },
+    "language": {
+      "type": "string",
+      "default": "en"
+    },
+    "speaker_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "diarization_available": {
+      "type": "boolean",
+      "description": "是否有说话人分离标注"
+    },
+    "asr_model": {
+      "type": ["string", "null"],
+      "description": "使用的 ASR 模型标识"
+    },
+    "asr_confidence": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "noise_level": {
+      "type": "string",
+      "enum": ["clean", "light", "moderate", "heavy", "unknown"]
+    },
+    "ticket_id": {
+      "type": ["string", "null"],
+      "description": "关联工单 ID"
+    },
+    "product_line": {
+      "type": ["string", "null"],
+      "enum": ["northstar_workspace", "northstar_edge_gateway", "northstar_studio", "cross_product", null]
+    },
+    "pii_level": {
+      "type": "string",
+      "enum": ["none", "low", "high"]
+    },
+    "pii_redacted": {
+      "type": "boolean"
+    },
+    "license_tag": {
+      "type": "string",
+      "enum": ["public_domain", "cc_by", "cc_by_sa", "course_synthetic", "proprietary", "unknown"]
+    },
+    "quality_gate": {
+      "type": "string",
+      "enum": ["pass", "warn", "fail", "pending"]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "ingest_ts": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

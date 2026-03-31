@@ -1,0 +1,37 @@
+{
+  "manifest_id": "manifest-tickets-synthetic-20260331-001",
+  "schema_version": "source_manifest_v1",
+  "batch_id": "batch-20260331-001",
+  "modality": "structured",
+  "source_type": "ticket_export",
+  "product_line": "cross_product",
+  "license_tag": "course_synthetic",
+  "canonization_status": "in_progress",
+  "assets": [
+    {
+      "source_id": "structured:tickets:seed_batch_001",
+      "source_url_or_path": "s3://omni-raw-tickets/synthetic/tickets-seed-batch-001.jsonl",
+      "asset_type": "jsonl",
+      "size_bytes": null,
+      "checksum_sha256": null,
+      "notes": "合成工单数据集 — Student Core Pack 500 条，来自 ticket_simulator"
+    },
+    {
+      "source_id": "structured:tickets:msdialog_sample",
+      "source_url_or_path": "s3://omni-raw-tickets/msdialog/msdialog-sample-100.jsonl",
+      "asset_type": "jsonl",
+      "size_bytes": null,
+      "checksum_sha256": null,
+      "notes": "MSDialog 多轮对话种子 100 条 — 规范化后作为多轮支持对话补充"
+    }
+  ],
+  "ingest_config": {
+    "parser": "custom",
+    "chunk_size": null,
+    "chunk_overlap": null,
+    "pii_scan": true
+  },
+  "created_at": "2026-03-31T00:00:00Z",
+  "owner": "course-team",
+  "notes": "工单数据全部为合成数据，确保可分发、无隐私问题"
+}

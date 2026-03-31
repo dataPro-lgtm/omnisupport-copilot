@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12",
+  "$id": "omni://contracts/tools/tool_contract/v1",
+  "title": "ToolContract",
+  "description": "OmniSupport Copilot — Agent 工具契约规范 v1。所有可被 Agent 调用的工具必须符合此契约。",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "name", "version", "description",
+    "input_schema", "output_schema",
+    "allowed_roles", "idempotent",
+    "audit_fields", "failure_codes",
+    "hitl_conditions"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "工具名称（snake_case）",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "version": {
+      "type": "string",
+      "description": "工具版本",
+      "pattern": "^v[0-9]+\\.[0-9]+$"
+    },
+    "description": {
+      "type": "string",
+      "description": "模型可读工具描述，用于 function calling"
+    },
+    "input_schema": {
+      "type": "object",
+      "description": "输入参数 JSON Schema（OpenAI function calling 兼容）"
+    },
+    "output_schema": {
+      "type": "object",
+      "description": "输出结果 JSON Schema"
+    },
+    "allowed_roles": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "允许调用此工具的角色列表",
+      "minItems": 1
+    },
+    "idempotent": {
+      "type": "boolean",
+      "description": "此工具调用是否幂等"
+    },
+    "idempotency_key_fields": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "构成幂等键的输入字段名列表"
+    },
+    "audit_fields": {
+      "type": "object",
+      "required": ["log_input", "log_output", "log_actor", "retention_days"],
+      "properties": {
+        "log_input": {"type": "boolean"},
+        "log_output": {"type": "boolean"},
+        "log_actor": {"type": "boolean"},
+        "retention_days": {"type": "integer", "minimum": 1}
+      }
+    },
+    "failure_codes": {
+      "type": "object",
+      "description": "错误码映射，key=错误码, value=描述",
+      "additionalProperties": {"type": "string"}
+    },
+    "hitl_conditions": {
+      "type": "array",
+      "description": "触发人工介入的条件列表",
+      "items": {
+        "type": "object",
+        "required": ["condition", "action"],
+        "properties": {
+          "condition": {"type": "string"},
+          "action": {
+            "type": "string",
+            "enum": ["pause_and_notify", "reject", "require_approval"]
+          }
+        }
+      }
+    },
+    "rate_limit": {
+      "type": "object",
+      "properties": {
+        "calls_per_minute": {"type": "integer"},
+        "calls_per_hour": {"type": "integer"}
+      }
+    }
+  },
+  "additionalProperties": false
+}

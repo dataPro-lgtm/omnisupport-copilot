@@ -1,0 +1,66 @@
+{
+  "name": "get_ticket_status",
+  "version": "v1.0",
+  "description": "查询指定工单的当前状态、优先级、受理人、SLA 信息和最新评论。仅返回当前用户有权限查看的工单。",
+  "input_schema": {
+    "type": "object",
+    "required": ["ticket_id"],
+    "properties": {
+      "ticket_id": {
+        "type": "string",
+        "description": "工单唯一 ID，格式: TKT-YYYYMMDD-NNNNNN",
+        "pattern": "^TKT-[0-9]{8}-[0-9]{6}$"
+      },
+      "include_comments": {
+        "type": "boolean",
+        "default": false,
+        "description": "是否包含最新 5 条评论"
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["ticket_id", "status", "priority", "created_at", "trace_id"],
+    "properties": {
+      "ticket_id": {"type": "string"},
+      "status": {"type": "string"},
+      "priority": {"type": "string"},
+      "category": {"type": "string"},
+      "product_line": {"type": "string"},
+      "assignee_id": {"type": ["string", "null"]},
+      "sla_due_at": {"type": ["string", "null"]},
+      "created_at": {"type": "string"},
+      "updated_at": {"type": ["string", "null"]},
+      "resolved_at": {"type": ["string", "null"]},
+      "comments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "comment_id": {"type": "string"},
+            "author_role": {"type": "string"},
+            "body_preview": {"type": "string"},
+            "created_at": {"type": "string"}
+          }
+        }
+      },
+      "trace_id": {"type": "string"},
+      "release_id": {"type": "string"}
+    }
+  },
+  "allowed_roles": ["end_user", "support_agent", "admin"],
+  "idempotent": true,
+  "idempotency_key_fields": ["ticket_id"],
+  "audit_fields": {
+    "log_input": true,
+    "log_output": false,
+    "log_actor": true,
+    "retention_days": 365
+  },
+  "failure_codes": {
+    "TICKET_NOT_FOUND": "工单不存在或已删除",
+    "PERMISSION_DENIED": "当前用户无权查看该工单",
+    "DB_UNAVAILABLE": "数据库暂时不可用"
+  },
+  "hitl_conditions": []
+}

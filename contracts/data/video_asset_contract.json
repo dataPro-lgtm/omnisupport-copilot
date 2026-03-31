@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12",
+  "$id": "omni://contracts/data/video_asset/v1",
+  "title": "VideoAssetContract",
+  "description": "OmniSupport Copilot — 视频资产数据契约 v1 (教学视频 / 安装录屏 / 支持演示)",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "video_id", "schema_version", "source_id", "ingest_batch_id",
+    "video_type", "duration_sec", "pii_level", "quality_gate",
+    "owner", "license_tag", "ingest_ts"
+  ],
+  "properties": {
+    "video_id": {
+      "type": "string",
+      "description": "全局唯一视频 ID，格式: VID-{namespace}-{sha256[:12]}",
+      "pattern": "^VID-[a-z0-9_]+-[a-f0-9]{12}$"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "video_asset_v1"
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "ingest_batch_id": {
+      "type": "string"
+    },
+    "video_type": {
+      "type": "string",
+      "enum": ["tutorial", "installation", "screencast", "support_demo", "interview", "other"]
+    },
+    "duration_sec": {
+      "type": "number",
+      "minimum": 0
+    },
+    "raw_object_path": {
+      "type": ["string", "null"]
+    },
+    "audio_track_path": {
+      "type": ["string", "null"],
+      "description": "抽取的音轨文件路径"
+    },
+    "transcript_object_path": {
+      "type": ["string", "null"],
+      "description": "ASR 转写结果路径"
+    },
+    "keyframes_prefix": {
+      "type": ["string", "null"],
+      "description": "关键帧图片的 S3 路径前缀"
+    },
+    "segment_count": {
+      "type": ["integer", "null"],
+      "description": "场景切分片段数量"
+    },
+    "language": {
+      "type": "string",
+      "default": "en"
+    },
+    "resolution": {
+      "type": ["string", "null"],
+      "description": "视频分辨率，如 '1920x1080'"
+    },
+    "source_url": {
+      "type": ["string", "null"],
+      "format": "uri"
+    },
+    "product_line": {
+      "type": ["string", "null"],
+      "enum": ["northstar_workspace", "northstar_edge_gateway", "northstar_studio", "cross_product", null]
+    },
+    "topics": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "视频主题标签"
+    },
+    "has_ocr": {
+      "type": "boolean",
+      "description": "是否已提取关键帧 OCR 文字"
+    },
+    "has_caption": {
+      "type": "boolean",
+      "description": "是否有字幕/图像描述"
+    },
+    "pii_level": {
+      "type": "string",
+      "enum": ["none", "low", "high"]
+    },
+    "license_tag": {
+      "type": "string",
+      "enum": ["public_domain", "cc_by", "cc_by_sa", "course_synthetic", "proprietary", "unknown"]
+    },
+    "quality_gate": {
+      "type": "string",
+      "enum": ["pass", "warn", "fail", "pending"]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "ingest_ts": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

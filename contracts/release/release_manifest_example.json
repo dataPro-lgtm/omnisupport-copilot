@@ -1,0 +1,29 @@
+{
+  "release_id": "dev-20260331-001",
+  "schema_version": "release_manifest_v1",
+  "env": "dev",
+  "data_release_id": "data-v0.1.0",
+  "index_release_id": "index-v0.1.0",
+  "prompt_release_id": "prompt-v0.1.0",
+  "eval_run_id": "eval-run-20260331-001",
+  "git_sha": "0000000000000000000000000000000000000000",
+  "created_at": "2026-03-31T00:00:00Z",
+  "created_by": "system/init",
+  "status": "active",
+  "previous_release_id": null,
+  "eval_summary": {
+    "faithfulness": 0.0,
+    "answer_relevance": 0.0,
+    "retrieval_precision": 0.0,
+    "regression_pass_rate": 1.0,
+    "total_cases": 0,
+    "failed_cases": 0
+  },
+  "rollout_notes": "Phase 0 初始化发布 — 工程基线骨架，尚无真实评测数据",
+  "rollback_reason": null,
+  "services": {
+    "rag_api": "omni-rag-api:0.1.0",
+    "tool_api": "omni-tool-api:0.1.0",
+    "admin_api": "omni-admin-api:0.1.0"
+  }
+}
