@@ -9,8 +9,9 @@
 
 - Docker Desktop / Docker Engine 已安装（≥ 24.0）
 - Docker Compose V2（`docker compose` 命令可用）
-- Python 3.11+（本地运行测试用）
 - `ANTHROPIC_API_KEY` 已申请
+
+> Week01 推荐走 **Docker-only** 路线：不要求学员本地先配置 Python 依赖。
 
 ---
 
@@ -38,6 +39,14 @@ docker compose --env-file infra/env/.env.local \
 
 预期输出：9 个容器全部 `Started` 或 `Healthy`。
 
+如果 `postgres` 启动时报 `bind: address already in use`，说明宿主机 `5432` 已被本地 PostgreSQL 占用。先执行：
+
+```bash
+lsof -nP -iTCP:5432 -sTCP:LISTEN
+```
+
+停止冲突进程后，再重新执行启动命令。
+
 ---
 
 ## 步骤 3：验证各服务健康
@@ -63,37 +72,34 @@ open http://localhost:6006
 
 ---
 
-## 步骤 4：生成种子工单数据
+## 步骤 4：生成种子工单数据（无本地依赖）
 
 ```bash
-# 生成 500 条合成工单
-python data/synthetic_generators/ticket_simulator.py \
-    --count 500 \
-    --output data/canonization/tickets/tickets-seed-001.jsonl
-
-# 确认生成成功
-wc -l data/canonization/tickets/tickets-seed-001.jsonl
-# 预期输出: 500
+docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
+  python data/synthetic_generators/ticket_simulator.py \
+  --count 500 \
+  --output data/canonization/tickets/tickets-seed-001.jsonl
 ```
 
 ---
 
-## 步骤 5：dry-run seed loader（验证 manifest 校验）
+## 步骤 5：dry-run seed loader（验证 manifest 校验，无本地依赖）
 
 ```bash
-python -m pipelines.ingestion.seed_loader \
-    --manifest-dir data/seed_manifests
+docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.ingestion.seed_loader \
+  --manifest-dir data/seed_manifests
 ```
 
 预期输出：显示 3 个 manifest，无 REJECTED 条目，成功率 100%。
 
 ---
 
-## 步骤 6：运行契约测试
+## 步骤 6：运行契约测试（无本地依赖）
 
 ```bash
-pip install -e ".[dev]"
-pytest tests/contract/ -v
+docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
+  pytest tests/contract/ -v
 ```
 
 **Week01 DoD**：所有契约测试必须通过（绿色）。
@@ -131,6 +137,7 @@ curl -s http://localhost:8000/api/v1/admin/release | python3 -m json.tool
 | postgres 容器不健康 | 端口 5432 被占用 | `lsof -i :5432`，停止冲突进程 |
 | minio_init 退出非 0 | MinIO 还未就绪 | 等待 30s 后重试 `docker compose restart minio_init` |
 | rag_api health 返回 `database: down` | DB 未完成初始化 | 等待 `001_init.sql` 执行完成 |
+| `docker compose run devbox ...` 失败 | 首次构建 devbox 镜像 | 先执行 `docker compose --profile tools -f infra/docker-compose.yml build devbox` |
 | contract tests 失败 | Schema 文件缺失 | 检查 `contracts/` 目录结构 |
 
 ---

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "omni://data/seed_manifests/source_manifest/v1",
   "title": "SourceManifest",
   "description": "OmniSupport Copilot — 种子数据清单 v1。描述一批源资产的来源、类型、数量和采集配置。",
@@ -13,7 +13,7 @@
     "manifest_id": {
       "type": "string",
       "description": "清单唯一 ID",
-      "pattern": "^manifest-[a-z0-9_]+-[0-9]{8}-[0-9]{3}$"
+      "pattern": "^manifest-[a-z0-9_-]+-[0-9]{8}-[0-9]{3}$"
     },
     "schema_version": {
       "type": "string",
@@ -69,8 +69,8 @@
       "description": "采集配置",
       "properties": {
         "parser": {"type": "string", "enum": ["docling", "unstructured", "custom", "whisper", "ffmpeg"]},
-        "chunk_size": {"type": "integer"},
-        "chunk_overlap": {"type": "integer"},
+        "chunk_size": {"type": ["integer", "null"]},
+        "chunk_overlap": {"type": ["integer", "null"]},
         "pii_scan": {"type": "boolean"}
       }
     },
