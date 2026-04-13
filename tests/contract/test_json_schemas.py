@@ -117,3 +117,13 @@ def test_seed_manifests_structure():
         assert "modality" in manifest, f"{manifest_path.name}: missing modality"
         assert "assets" in manifest, f"{manifest_path.name}: missing assets"
         assert len(manifest["assets"]) >= 1, f"{manifest_path.name}: assets list is empty"
+
+
+def test_seed_manifests_validate_against_schema():
+    manifest_dir = PROJECT_ROOT / "data" / "seed_manifests"
+    schema = load_schema(manifest_dir / "source_manifest_schema.json")
+    manifests = [f for f in manifest_dir.glob("*.json") if not f.name.startswith("source_manifest")]
+
+    for manifest_path in manifests:
+        manifest = load_schema(manifest_path)
+        jsonschema.validate(manifest, schema)

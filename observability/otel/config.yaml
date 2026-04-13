@@ -29,18 +29,18 @@ processors:
 
 exporters:
   # Phoenix (Arize) — AI 请求可观测
-  otlp/phoenix:
+  otlp_grpc/phoenix:
     endpoint: phoenix:4317
     tls:
       insecure: true
 
   # 调试用：输出到 stdout（开发环境开启）
-  logging:
+  debug:
     verbosity: detailed
 
   # Prometheus metrics 暴露
   prometheus:
-    endpoint: "0.0.0.0:8888"
+    endpoint: "0.0.0.0:8889"
 
 extensions:
   health_check:
@@ -54,12 +54,12 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch, resource]
-      exporters: [otlp/phoenix, logging]
+      exporters: [otlp_grpc/phoenix, debug]
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [prometheus, logging]
+      exporters: [prometheus, debug]
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [logging]
+      exporters: [debug]

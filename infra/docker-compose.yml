@@ -1,5 +1,3 @@
-version: "3.9"
-
 # OmniSupport Copilot — Week01 最小可演进基线
 # 服务启动顺序: postgres → minio → rag_api / tool_api → dagster → otel_collector → phoenix
 # 使用方式: docker compose --env-file infra/env/.env.local up -d
@@ -190,7 +188,7 @@ services:
     ports:
       - "4317:4317"   # gRPC OTLP
       - "4318:4318"   # HTTP OTLP
-      - "8888:8888"   # Prometheus metrics
+      - "8889:8889"   # Prometheus metrics
     volumes:
       - ../observability/otel/config.yaml:/etc/otel/config.yaml:ro
     networks:
@@ -236,3 +234,20 @@ services:
     volumes:
       - ../data/seed_manifests:/manifests:ro
       - ../data/canonization:/canonization:ro
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 10. Devbox — 无本地 Python 依赖的本地验证容器
+  # ─────────────────────────────────────────────────────────────────────────────
+  devbox:
+    build:
+      context: ..
+      dockerfile: infra/devbox.Dockerfile
+    container_name: omni_devbox
+    profiles: ["tools"]
+    working_dir: /workspace
+    environment:
+      PYTHONPATH: /workspace
+    volumes:
+      - ..:/workspace
+    networks:
+      - omni_net

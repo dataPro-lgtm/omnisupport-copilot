@@ -13,13 +13,15 @@
 
 ## 快速启动（Week01 基线）
 
+Week01 默认走 **Docker-only** 路线。学员本机只需要 Docker Desktop / Docker Engine，不需要先配置本地 Python 依赖。
+
 ```bash
 # 1. 复制环境变量
 cp infra/env/.env.example infra/env/.env.local
 # 填写 ANTHROPIC_API_KEY
 
 # 2. 启动所有服务
-docker compose --env-file infra/env/.env.local -f infra/docker-compose.yml up -d
+docker compose --env-file infra/env/.env.local -f infra/docker-compose.yml up -d --build
 
 # 3. 验证健康
 curl http://localhost:8000/health   # RAG API
@@ -28,14 +30,27 @@ open http://localhost:3000          # Dagster UI
 open http://localhost:9001          # MinIO Console
 open http://localhost:6006          # Phoenix (AI 可观测)
 
-# 4. 生成种子工单数据
-python data/synthetic_generators/ticket_simulator.py --count 500 \
+# 4. 生成种子工单数据（无本地依赖）
+docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
+  python data/synthetic_generators/ticket_simulator.py --count 500 \
     --output data/canonization/tickets/tickets-seed-001.jsonl
 
-# 5. 运行契约测试
-pip install -e ".[dev]"
-pytest tests/contract/ -v
+# 5. dry-run seed loader（无本地依赖）
+docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.ingestion.seed_loader --manifest-dir data/seed_manifests
+
+# 6. 运行契约测试（无本地依赖）
+docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
+  pytest tests/contract/ -v
 ```
+
+如果 `postgres` 启动失败并提示 `5432` 被占用，先释放本机端口：
+
+```bash
+lsof -nP -iTCP:5432 -sTCP:LISTEN
+```
+
+如果你仍然想在宿主机本地直接跑 Python 命令，再自行创建 `.venv`。默认文档路径不再要求学员这么做。
 
 ---
 
