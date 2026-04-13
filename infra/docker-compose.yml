@@ -24,8 +24,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-omni}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omnipass}
       POSTGRES_DB: ${POSTGRES_DB:-omnisupport}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d
@@ -100,7 +98,7 @@ services:
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
       OTEL_SERVICE_NAME: rag_api
       RELEASE_ID: ${RELEASE_ID:-dev-local}
