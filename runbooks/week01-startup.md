@@ -9,9 +9,10 @@
 
 - Docker Desktop / Docker Engine 已安装（≥ 24.0）
 - Docker Compose V2（`docker compose` 命令可用）
-- `ANTHROPIC_API_KEY` 已申请
+- `ANTHROPIC_API_KEY` 可选（Week01 留空可先验证工程基线）
 
 > Week01 推荐走 **Docker-only** 路线：不要求学员本地先配置 Python 依赖。
+> 默认 compose 不把 PostgreSQL 暴露到宿主机，避免与本机数据库冲突。
 
 ---
 
@@ -22,7 +23,7 @@ cd /path/to/workspace
 # 复制环境变量模板
 cp infra/env/.env.example infra/env/.env.local
 
-# 编辑 .env.local，填写以下必填项:
+# 编辑 .env.local，如需真实 LLM 调用再填写:
 # ANTHROPIC_API_KEY=sk-ant-...
 # （其余字段保持默认即可）
 ```
@@ -37,15 +38,8 @@ docker compose --env-file infra/env/.env.local \
                up -d --build
 ```
 
-预期输出：9 个容器全部 `Started` 或 `Healthy`。
-
-如果 `postgres` 启动时报 `bind: address already in use`，说明宿主机 `5432` 已被本地 PostgreSQL 占用。先执行：
-
-```bash
-lsof -nP -iTCP:5432 -sTCP:LISTEN
-```
-
-停止冲突进程后，再重新执行启动命令。
+预期状态：`postgres / minio / rag_api / tool_api / dagster / otel_collector / phoenix` 为 `Up`，
+`minio_init` 为一次性初始化成功后退出。
 
 ---
 
@@ -53,21 +47,21 @@ lsof -nP -iTCP:5432 -sTCP:LISTEN
 
 ```bash
 # RAG API
-curl -s http://localhost:8000/health | python3 -m json.tool
+curl -s http://localhost:8000/health
 
 # Tool API
-curl -s http://localhost:8001/health | python3 -m json.tool
+curl -s http://localhost:8001/health
 
-# MinIO (访问控制台)
-open http://localhost:9001
+# MinIO (浏览器打开控制台)
+# http://localhost:9001
 # 用户名: minioadmin / 密码: minioadmin
 # 确认 8 个 bucket 已创建
 
 # Dagster UI
-open http://localhost:3000
+# http://localhost:3000
 
 # Phoenix (AI 可观测)
-open http://localhost:6006
+# http://localhost:6006
 ```
 
 ---
@@ -75,7 +69,7 @@ open http://localhost:6006
 ## 步骤 4：生成种子工单数据（无本地依赖）
 
 ```bash
-docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
   python data/synthetic_generators/ticket_simulator.py \
   --count 500 \
   --output data/canonization/tickets/tickets-seed-001.jsonl
@@ -86,7 +80,7 @@ docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
 ## 步骤 5：dry-run seed loader（验证 manifest 校验，无本地依赖）
 
 ```bash
-docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
   python -m pipelines.ingestion.seed_loader \
   --manifest-dir data/seed_manifests
 ```
@@ -98,7 +92,7 @@ docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
 ## 步骤 6：运行契约测试（无本地依赖）
 
 ```bash
-docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
   pytest tests/contract/ -v
 ```
 
@@ -112,8 +106,7 @@ docker compose --profile tools -f infra/docker-compose.yml run --rm devbox \
 # 发送一个测试查询
 curl -s -X POST http://localhost:8000/api/v1/query \
   -H "Content-Type: application/json" \
-  -d '{"query": "如何配置 Northstar Workspace SSO？"}' \
-  | python3 -m json.tool
+  -d '{"query": "如何配置 Northstar Workspace SSO？"}'
 
 # 确认响应包含以下字段:
 # answer, citations, evidence_ids, confidence, release_id, trace_id
@@ -124,8 +117,8 @@ curl -s -X POST http://localhost:8000/api/v1/query \
 ## 步骤 8：验证 Release Manifest
 
 ```bash
-curl -s http://localhost:8000/api/v1/admin/release | python3 -m json.tool
-# 预期: release_id = "dev-20260331-001"
+curl -s http://localhost:8000/api/v1/admin/release
+# 预期: release_id = "dev-local"（或你在 .env.local 中自定义的 RELEASE_ID）
 ```
 
 ---
@@ -134,10 +127,9 @@ curl -s http://localhost:8000/api/v1/admin/release | python3 -m json.tool
 
 | 问题 | 可能原因 | 处理方法 |
 |------|---------|---------|
-| postgres 容器不健康 | 端口 5432 被占用 | `lsof -i :5432`，停止冲突进程 |
 | minio_init 退出非 0 | MinIO 还未就绪 | 等待 30s 后重试 `docker compose restart minio_init` |
 | rag_api health 返回 `database: down` | DB 未完成初始化 | 等待 `001_init.sql` 执行完成 |
-| `docker compose run devbox ...` 失败 | 首次构建 devbox 镜像 | 先执行 `docker compose --profile tools -f infra/docker-compose.yml build devbox` |
+| `docker compose run devbox ...` 失败 | 首次构建 devbox 镜像 | 先执行 `docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml build devbox` |
 | contract tests 失败 | Schema 文件缺失 | 检查 `contracts/` 目录结构 |
 
 ---
