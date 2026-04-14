@@ -125,28 +125,7 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 
 ## 本地部署拓扑
 
-```mermaid
-flowchart LR
-    User["Browser / curl"] --> RAG["rag_api :8000"]
-    User --> Tool["tool_api :8001"]
-    User --> Dagster["Dagster UI :3000"]
-    User --> MinIO["MinIO Console :9001"]
-    User --> Phoenix["Phoenix :6006"]
-
-    RAG --> PG["PostgreSQL + pgvector"]
-    Tool --> PG
-    Dagster --> PG
-
-    RAG --> OBJ["MinIO (S3-compatible)"]
-    Dagster --> OBJ
-
-    RAG --> OTel["OTel Collector"]
-    Tool --> OTel
-    OTel --> Phoenix
-
-    Devbox["devbox (tools profile)"] --> PG
-    Devbox --> OBJ
-```
+![OmniSupport Copilot 本地部署拓扑](docs/assets/readme-local-deployment-topology.png)
 
 默认对宿主机开放的端口：
 - `8000` — RAG API
