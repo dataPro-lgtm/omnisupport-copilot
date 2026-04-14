@@ -11,9 +11,43 @@
 
 ---
 
+## 前置条件
+
+Week01 默认走 **Docker-only** 路线。学员不需要先配置本地 Python、PostgreSQL 或 MinIO。
+
+必需：
+- Docker Desktop / Docker Engine 24+
+- Docker Compose V2（`docker compose` 可用）
+- 现代浏览器（访问 Dagster / MinIO / Phoenix）
+
+可选：
+- `ANTHROPIC_API_KEY`
+  - 留空：可完成 Week01 工程基线验证，RAG API 返回 fallback 响应
+  - 填写：可继续验证真实生成链路
+
+支持环境：
+- macOS Apple Silicon / Intel
+- Linux x86_64 / arm64
+- Windows 11 + Docker Desktop / WSL2
+
+---
+
+## 机器配置建议
+
+| 场景 | CPU | 内存 | 磁盘空闲 | 说明 |
+|------|-----|------|---------|------|
+| Student Core Pack 最低配置 | 4 核 | 16 GB | 25 GB | 可完成 Week01-Week03 本地练习，首次构建会偏慢 |
+| Student Core Pack 推荐配置 | 8 核 | 24 GB | 50 GB | 本地开发、反复重建、跑 contract test 更稳 |
+| Instructor Scale Pack 推荐配置 | 8-12 核 | 32 GB+ | 80 GB+ | 适合更大数据包、更多 chunk、演示规模差异 |
+
+说明：
+- Student Core Pack 的目标规模是 `1,200–1,800` 源资产、`6–12 万` chunk，面向单机 Docker Compose。
+- Instructor Scale Pack 的目标规模是 `6,000–10,000` 源资产、`20–50 万` chunk，更适合共享实验环境或高配机器。
+
+---
+
 ## 快速启动（Week01 基线）
 
-Week01 默认走 **Docker-only** 路线。学员本机只需要 Docker Desktop / Docker Engine，不需要先配置本地 Python 依赖。
 默认情况下，数据库只在 Docker 网络内可见，不要求也不依赖学员本机安装 PostgreSQL。
 
 ```bash
@@ -63,12 +97,67 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 
 ## 架构总览（七层）
 
-```
-Source → Raw Zone (MinIO) → Parse/Normalize → Lakehouse (Iceberg)
-→ Serving (pgvector) → Agent/Tool (FastAPI) → Observability (OTel/Phoenix)
-```
+![OmniSupport Copilot 七层架构总览](docs/assets/readme-seven-layer-architecture.png)
 
 详见 [docs/blueprints/project-blueprint.md](docs/blueprints/project-blueprint.md)
+
+---
+
+## 技术栈与选型理由
+
+| 层 | 技术 | 为什么这样选 |
+|----|------|-------------|
+| 对象存储 | MinIO | 本地可跑，接口与 S3 兼容，后续切云端对象存储时迁移成本低 |
+| 结构化 + 向量检索 | PostgreSQL + pgvector | Week01-Week08 阶段单机可跑，既能保留结构化数据，也能承接向量检索与 FTS |
+| 湖仓层 | Apache Iceberg | 支持快照、时间旅行、Schema Evolution，契合课程后续治理与回滚章节 |
+| 编排层 | Dagster | 资产化编排更适合课程讲“依赖、回填、血缘、DoD” |
+| 服务层 | FastAPI | 契约清晰、调试成本低、适合本地教学和 API smoke test |
+| 可观测 | OpenTelemetry + Phoenix | 从 Week01 就预埋 `trace_id / release_id`，后续能自然衔接 tracing 与 bad case replay |
+| 契约层 | JSON Schema | 数据契约、工具契约、发布契约都能机读校验，适合课程工程化落地 |
+| 本地工具执行 | Docker `devbox` | 学员不必先配本地 Python 环境，命令路径统一 |
+
+选型原则：
+- 先保证 **Student Core Pack 本地可跑**
+- 再保证后续章节能自然扩展到治理、评测、Tracing、回滚
+- 不为“演示规模”单独写另一套代码路径
+
+---
+
+## 本地部署拓扑
+
+```mermaid
+flowchart LR
+    User["Browser / curl"] --> RAG["rag_api :8000"]
+    User --> Tool["tool_api :8001"]
+    User --> Dagster["Dagster UI :3000"]
+    User --> MinIO["MinIO Console :9001"]
+    User --> Phoenix["Phoenix :6006"]
+
+    RAG --> PG["PostgreSQL + pgvector"]
+    Tool --> PG
+    Dagster --> PG
+
+    RAG --> OBJ["MinIO (S3-compatible)"]
+    Dagster --> OBJ
+
+    RAG --> OTel["OTel Collector"]
+    Tool --> OTel
+    OTel --> Phoenix
+
+    Devbox["devbox (tools profile)"] --> PG
+    Devbox --> OBJ
+```
+
+默认对宿主机开放的端口：
+- `8000` — RAG API
+- `8001` — Tool API
+- `3000` — Dagster
+- `9000/9001` — MinIO API / Console
+- `6006` — Phoenix
+
+默认不对宿主机开放：
+- PostgreSQL `5432`
+  - 只在 Docker 网络内可见，避免与学员本机数据库冲突
 
 ---
 
