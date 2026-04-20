@@ -6,38 +6,56 @@
   "source_type": "help_center",
   "product_line": "northstar_workspace",
   "license_tag": "course_synthetic",
+  "contract_ref": "omni://contracts/data/doc_asset/v1",
+  "load_mode": "full_snapshot",
   "canonization_status": "in_progress",
+  "gate_policy": {
+    "on_missing_checksum": "warn",
+    "on_partial_metadata": "warn",
+    "on_missing_metadata": "quarantine",
+    "on_pii_gap": "quarantine",
+    "on_contract_mismatch": "reject",
+    "on_unknown_license": "reject"
+  },
   "assets": [
     {
       "source_id": "doc:workspace:000000000001",
       "source_url_or_path": "s3://omni-raw-documents/workspace/helpcenter/getting-started.html",
       "asset_type": "html",
-      "size_bytes": null,
-      "checksum_sha256": null,
+      "size_bytes": 54288,
+      "checksum_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "metadata_status": "complete",
+      "pii_scan_status": "clear",
       "notes": "Northstar Workspace 入门指南 — 基于 MS365 帮助中心规范化"
     },
     {
       "source_id": "doc:workspace:000000000002",
       "source_url_or_path": "s3://omni-raw-documents/workspace/helpcenter/admin-guide.html",
       "asset_type": "html",
-      "size_bytes": null,
-      "checksum_sha256": null,
+      "size_bytes": 72888,
+      "checksum_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+      "metadata_status": "complete",
+      "pii_scan_status": "clear",
       "notes": "管理员配置指南"
     },
     {
       "source_id": "doc:workspace:000000000003",
       "source_url_or_path": "s3://omni-raw-documents/workspace/helpcenter/api-reference.html",
       "asset_type": "api_doc",
-      "size_bytes": null,
-      "checksum_sha256": null,
+      "size_bytes": 98304,
+      "checksum_sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+      "metadata_status": "complete",
+      "pii_scan_status": "clear",
       "notes": "Workspace REST API 参考文档"
     },
     {
       "source_id": "doc:workspace:000000000004",
       "source_url_or_path": "s3://omni-raw-documents/workspace/release-notes/rn-2024-q4.html",
       "asset_type": "release_notes",
-      "size_bytes": null,
-      "checksum_sha256": null,
+      "size_bytes": 36864,
+      "checksum_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "metadata_status": "complete",
+      "pii_scan_status": "clear",
       "notes": "2024 Q4 发版说明"
     }
   ],

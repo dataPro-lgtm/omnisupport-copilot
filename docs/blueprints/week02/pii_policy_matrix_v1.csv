@@ -1,0 +1,16 @@
+modality,field_name,pii_level,default_action_retrieval,default_action_generation,default_action_tools,default_action_storage,notes
+ticket,customer_id,low,allow_filter,mask_output,allow_if_actor_scoped,store_plain,用于租户隔离与 entitlement 过滤
+ticket,org_id,low,allow_filter,mask_output,allow_if_actor_scoped,store_plain,多租户隔离主键
+ticket,description,high,redact_before_index,summary_only,block_direct_tool_use,store_redacted,任何原始自由文本都不应直接进索引
+ticket,assignee_id,low,allow_filter,mask_output,allow_for_admin_only,store_plain,内部人员标识
+document,source_url,none,allow,allow,not_applicable,store_plain,公开文档来源应可回链
+document,raw_object_path,low,allow_internal_only,mask_output,not_applicable,store_plain,对象存储路径不直接暴露给终端用户
+audio,transcript_object_path,low,allow_internal_only,mask_output,not_applicable,store_plain,让工程链路可追但不对终端暴露
+audio,pii_redacted,high,require_true_before_index,not_applicable,block_if_false,store_plain,布尔值本身不是 PII 但决定 high-risk 数据能否放行
+audio,speaker_count,none,allow,allow,not_applicable,store_plain,运行时质量字段
+audio,call_id,low,allow_internal_only,mask_output,allow_for_audit_only,store_plain,会话级追踪键
+video,source_url,low,allow_internal_only,mask_output,not_applicable,store_plain,版权边界与回链定位
+video,keyframes_prefix,low,allow_internal_only,mask_output,not_applicable,store_plain,仅供内部证据定位
+video,topics,none,allow,allow,not_applicable,store_plain,可用于 metadata filter
+cross_modal,license_tag,none,allow_gate,allow_gate,allow_gate,store_plain,先判断 license 再决定能否进入后续系统
+cross_modal,quality_gate,none,allow_gate,allow_gate,allow_gate,store_plain,质量门禁字段是 runtime policy 的入口

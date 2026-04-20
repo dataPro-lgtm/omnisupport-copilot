@@ -7,6 +7,7 @@
   "required": [
     "manifest_id", "schema_version", "batch_id",
     "modality", "source_type", "license_tag",
+    "contract_ref", "load_mode",
     "assets", "created_at", "owner"
   ],
   "properties": {
@@ -43,10 +44,77 @@
       "type": "string",
       "enum": ["public_domain", "cc_by", "cc_by_sa", "course_synthetic", "proprietary", "unknown"]
     },
+    "contract_ref": {
+      "type": "string",
+      "description": "本批 source 默认绑定的数据契约。Week02 统一使用当前 repo 的 JSON contract 体系，而不是另一套 YAML 文件。",
+      "enum": [
+        "omni://contracts/data/doc_asset/v1",
+        "omni://contracts/data/ticket/v1",
+        "omni://contracts/data/audio_asset/v1",
+        "omni://contracts/data/video_asset/v1"
+      ]
+    },
+    "load_mode": {
+      "type": "string",
+      "description": "采集语义：决定这批 source 如何进入 Week03 的 ingest / replay / backfill。",
+      "enum": ["full_snapshot", "incremental_cursor", "cdc", "replay", "backfill"]
+    },
     "canonization_status": {
       "type": "string",
       "enum": ["raw", "in_progress", "canonized", "rejected"],
       "description": "规范化处理状态"
+    },
+    "selection_window": {
+      "type": "object",
+      "description": "本批次的窗口声明。full_snapshot 可为空；其他模式按需填写 cursor / watermark / replay 信息。",
+      "properties": {
+        "start_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "end_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "cursor_field": {"type": ["string", "null"]},
+        "cursor_start": {"type": ["string", "null"]},
+        "cursor_end": {"type": ["string", "null"]},
+        "watermark_field": {"type": ["string", "null"]},
+        "replay_from_batch": {"type": ["string", "null"]},
+        "backfill_reason": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "gate_policy": {
+      "type": "object",
+      "description": "Week02 运行时门禁动作。schema/contract 严重错误应 reject；metadata 与 PII 缺口可按场景 warn 或 quarantine。",
+      "properties": {
+        "on_missing_checksum": {
+          "type": "string",
+          "enum": ["accept", "warn", "quarantine", "reject"]
+        },
+        "on_partial_metadata": {
+          "type": "string",
+          "enum": ["accept", "warn", "quarantine", "reject"]
+        },
+        "on_missing_metadata": {
+          "type": "string",
+          "enum": ["accept", "warn", "quarantine", "reject"]
+        },
+        "on_pii_gap": {
+          "type": "string",
+          "enum": ["accept", "warn", "quarantine", "reject"]
+        },
+        "on_contract_mismatch": {
+          "type": "string",
+          "enum": ["accept", "warn", "quarantine", "reject"]
+        },
+        "on_unknown_license": {
+          "type": "string",
+          "enum": ["accept", "warn", "quarantine", "reject"]
+        }
+      },
+      "additionalProperties": false
     },
     "assets": {
       "type": "array",
@@ -58,10 +126,32 @@
           "source_id": {"type": "string"},
           "source_url_or_path": {"type": "string"},
           "asset_type": {"type": "string"},
+          "contract_ref": {
+            "type": ["string", "null"],
+            "enum": [
+              "omni://contracts/data/doc_asset/v1",
+              "omni://contracts/data/ticket/v1",
+              "omni://contracts/data/audio_asset/v1",
+              "omni://contracts/data/video_asset/v1",
+              null
+            ]
+          },
           "size_bytes": {"type": ["integer", "null"]},
-          "checksum_sha256": {"type": ["string", "null"]},
+          "checksum_sha256": {
+            "type": ["string", "null"],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "metadata_status": {
+            "type": ["string", "null"],
+            "enum": ["complete", "partial", "missing", "unknown", null]
+          },
+          "pii_scan_status": {
+            "type": ["string", "null"],
+            "enum": ["clear", "redacted", "suspected", "not_run", "not_applicable", "unknown", null]
+          },
           "notes": {"type": "string"}
-        }
+        },
+        "additionalProperties": false
       }
     },
     "ingest_config": {
@@ -72,7 +162,8 @@
         "chunk_size": {"type": ["integer", "null"]},
         "chunk_overlap": {"type": ["integer", "null"]},
         "pii_scan": {"type": "boolean"}
-      }
+      },
+      "additionalProperties": false
     },
     "created_at": {
       "type": "string",
@@ -84,5 +175,6 @@
     "notes": {
       "type": "string"
     }
-  }
+  },
+  "additionalProperties": false
 }

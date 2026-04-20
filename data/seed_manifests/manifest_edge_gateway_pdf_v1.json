@@ -6,30 +6,46 @@
   "source_type": "pdf_manual",
   "product_line": "northstar_edge_gateway",
   "license_tag": "course_synthetic",
+  "contract_ref": "omni://contracts/data/doc_asset/v1",
+  "load_mode": "full_snapshot",
   "canonization_status": "in_progress",
+  "gate_policy": {
+    "on_missing_checksum": "warn",
+    "on_partial_metadata": "warn",
+    "on_missing_metadata": "quarantine",
+    "on_pii_gap": "quarantine",
+    "on_contract_mismatch": "reject",
+    "on_unknown_license": "reject"
+  },
   "assets": [
     {
       "source_id": "doc:edge:000000000001",
       "source_url_or_path": "s3://omni-raw-documents/edge-gateway/manuals/EG-3000-installation-guide.pdf",
       "asset_type": "pdf",
-      "size_bytes": null,
-      "checksum_sha256": null,
+      "size_bytes": 4128768,
+      "checksum_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "metadata_status": "complete",
+      "pii_scan_status": "not_applicable",
       "notes": "EG-3000 安装手册 — 含接线图、规格表"
     },
     {
       "source_id": "doc:edge:000000000002",
       "source_url_or_path": "s3://omni-raw-documents/edge-gateway/manuals/EG-3000-troubleshooting.pdf",
       "asset_type": "pdf",
-      "size_bytes": null,
-      "checksum_sha256": null,
+      "size_bytes": 2315520,
+      "checksum_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "metadata_status": "complete",
+      "pii_scan_status": "not_applicable",
       "notes": "故障排查手册 — 含错误码表"
     },
     {
       "source_id": "doc:edge:000000000003",
       "source_url_or_path": "s3://omni-raw-documents/edge-gateway/manuals/EG-3000-firmware-upgrade.pdf",
       "asset_type": "pdf",
-      "size_bytes": null,
-      "checksum_sha256": null,
+      "size_bytes": 1835008,
+      "checksum_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "metadata_status": "complete",
+      "pii_scan_status": "not_applicable",
       "notes": "固件升级说明"
     }
   ],

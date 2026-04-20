@@ -1,0 +1,67 @@
+{
+  "manifest_id": "manifest-week02-practice-20260420-001",
+  "schema_version": "source_manifest_v1",
+  "batch_id": "batch-20260420-001",
+  "modality": "structured",
+  "source_type": "ticket_export",
+  "product_line": "cross_product",
+  "license_tag": "course_synthetic",
+  "contract_ref": "omni://contracts/data/ticket/v1",
+  "load_mode": "incremental_cursor",
+  "canonization_status": "in_progress",
+  "selection_window": {
+    "cursor_field": "updated_at",
+    "cursor_start": "2026-04-01T00:00:00Z",
+    "cursor_end": "2026-04-20T00:00:00Z",
+    "watermark_field": "ingested_at"
+  },
+  "gate_policy": {
+    "on_missing_checksum": "warn",
+    "on_partial_metadata": "warn",
+    "on_missing_metadata": "quarantine",
+    "on_pii_gap": "quarantine",
+    "on_contract_mismatch": "reject",
+    "on_unknown_license": "reject"
+  },
+  "assets": [
+    {
+      "source_id": "structured:tickets:practice_ok",
+      "source_url_or_path": "s3://omni-raw-tickets/practice/tickets-practice-ok.jsonl",
+      "asset_type": "jsonl",
+      "size_bytes": 120384,
+      "checksum_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "metadata_status": "complete",
+      "pii_scan_status": "redacted",
+      "notes": "accept：增量窗口、契约绑定和 PII 扫描都齐全"
+    },
+    {
+      "source_id": "structured:tickets:practice_warn",
+      "source_url_or_path": "s3://omni-raw-tickets/practice/tickets-practice-warn.jsonl",
+      "asset_type": "jsonl",
+      "size_bytes": 118272,
+      "checksum_sha256": null,
+      "metadata_status": "partial",
+      "pii_scan_status": "clear",
+      "notes": "warn：checksum 缺失且 metadata 只有 partial，用于演示可放行但需补齐"
+    },
+    {
+      "source_id": "structured:tickets:practice_quarantine",
+      "source_url_or_path": "s3://omni-raw-tickets/practice/tickets-practice-quarantine.jsonl",
+      "asset_type": "jsonl",
+      "size_bytes": 110592,
+      "checksum_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "metadata_status": "complete",
+      "pii_scan_status": "not_run",
+      "notes": "quarantine：PII scan 还没跑，不应该直接进入 Week03 ingest"
+    }
+  ],
+  "ingest_config": {
+    "parser": "custom",
+    "chunk_size": null,
+    "chunk_overlap": null,
+    "pii_scan": true
+  },
+  "created_at": "2026-04-20T00:00:00Z",
+  "owner": "course-team",
+  "notes": "Week02 练习 manifest：演示 incremental_cursor + accept/warn/quarantine 三种 gate judgment。"
+}

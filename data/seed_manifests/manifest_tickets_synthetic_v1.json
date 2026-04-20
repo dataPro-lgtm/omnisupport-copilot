@@ -6,22 +6,36 @@
   "source_type": "ticket_export",
   "product_line": "cross_product",
   "license_tag": "course_synthetic",
+  "contract_ref": "omni://contracts/data/ticket/v1",
+  "load_mode": "full_snapshot",
   "canonization_status": "in_progress",
+  "gate_policy": {
+    "on_missing_checksum": "warn",
+    "on_partial_metadata": "warn",
+    "on_missing_metadata": "quarantine",
+    "on_pii_gap": "quarantine",
+    "on_contract_mismatch": "reject",
+    "on_unknown_license": "reject"
+  },
   "assets": [
     {
       "source_id": "structured:tickets:seed_batch_001",
       "source_url_or_path": "s3://omni-raw-tickets/synthetic/tickets-seed-batch-001.jsonl",
       "asset_type": "jsonl",
-      "size_bytes": null,
-      "checksum_sha256": null,
+      "size_bytes": 914432,
+      "checksum_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "metadata_status": "complete",
+      "pii_scan_status": "redacted",
       "notes": "合成工单数据集 — Student Core Pack 500 条，来自 ticket_simulator"
     },
     {
       "source_id": "structured:tickets:msdialog_sample",
       "source_url_or_path": "s3://omni-raw-tickets/msdialog/msdialog-sample-100.jsonl",
       "asset_type": "jsonl",
-      "size_bytes": null,
-      "checksum_sha256": null,
+      "size_bytes": 238592,
+      "checksum_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "metadata_status": "complete",
+      "pii_scan_status": "clear",
       "notes": "MSDialog 多轮对话种子 100 条 — 规范化后作为多轮支持对话补充"
     }
   ],

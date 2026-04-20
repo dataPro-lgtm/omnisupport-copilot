@@ -3,12 +3,17 @@ FROM python:3.11-slim
 WORKDIR /workspace
 
 COPY pyproject.toml README.md ./
+COPY services/rag_api/requirements.txt /tmp/rag_api_requirements.txt
+COPY services/tool_api/requirements.txt /tmp/tool_api_requirements.txt
 COPY contracts ./contracts
 COPY data ./data
 COPY pipelines ./pipelines
 COPY services ./services
 COPY tests ./tests
 
-RUN pip install --no-cache-dir -e ".[dev]"
+RUN pip install --no-cache-dir \
+    -r /tmp/rag_api_requirements.txt \
+    -r /tmp/tool_api_requirements.txt \
+    -e ".[dev]"
 
 CMD ["sh"]
