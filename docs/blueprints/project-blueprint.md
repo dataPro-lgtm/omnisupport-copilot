@@ -165,7 +165,7 @@ OmniSupport Copilot 是一个面向企业支持场景的**准生产级多模态 
 - [x] `contracts/data/` — 4 类数据契约 JSON Schema
 - [x] `contracts/tools/` — 工具契约规范 + 3 个具体工具定义
 - [x] `contracts/release/` — Release Manifest Schema + 示例
-- [x] `data/seed_manifests/` — 3 份种子清单
+- [x] `data/seed_manifests/` — Week01 baseline 3 份种子清单 + Week02 练习清单
 - [x] `docs/blueprints/project-blueprint.md` — 本文档
 - [x] `docs/blueprints/boundary-checklist.md` — 风险边界清单
 - [ ] `services/rag_api/` — FastAPI RAG 服务骨架

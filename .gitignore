@@ -18,13 +18,15 @@ lib/
 lib64/
 .venv/
 venv/
-env/
-ENV/
+/env/
+/ENV/
 
 # Environment
 .env
 .env.*
 !.env.example
+!infra/env/
+!infra/env/.env.example
 
 # IDE
 .idea/

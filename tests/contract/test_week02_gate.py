@@ -26,6 +26,11 @@ CONTRACTS_DIR = PROJECT_ROOT / "contracts" / "data"
 FIXTURE_PATH = PROJECT_ROOT / "tests" / "contract" / "fixtures" / "week02" / "sample_records.json"
 MANIFEST_SCHEMA_PATH = PROJECT_ROOT / "data" / "seed_manifests" / "source_manifest_schema.json"
 PRACTICE_MANIFEST_PATH = PROJECT_ROOT / "data" / "seed_manifests" / "manifest_week02_practice_v1.json"
+WEEK01_MANIFEST_PATHS = [
+    PROJECT_ROOT / "data" / "seed_manifests" / "manifest_edge_gateway_pdf_v1.json",
+    PROJECT_ROOT / "data" / "seed_manifests" / "manifest_tickets_synthetic_v1.json",
+    PROJECT_ROOT / "data" / "seed_manifests" / "manifest_workspace_helpcenter_v1.json",
+]
 
 CONTRACT_PATHS = {
     "ticket": CONTRACTS_DIR / "ticket_contract.json",
@@ -118,3 +123,25 @@ def test_week02_seed_loader_emits_gate_judgments_and_report(tmp_path: Path):
     assert report["summary"]["warn_count"] == 1
     assert report["summary"]["quarantine_count"] == 1
     assert report["summary"]["reject_count"] == 0
+
+
+def test_seed_loader_can_limit_run_to_explicit_manifest_paths():
+    loader = SeedLoader(
+        manifest_dir=PROJECT_ROOT / "data" / "seed_manifests",
+        manifest_paths=WEEK01_MANIFEST_PATHS,
+        batch_id="batch-test-week01-001",
+        dry_run=True,
+    )
+
+    results = loader.run()
+
+    assert not loader.rejected_manifests
+    assert len(results) == 3
+    assert {result.manifest_id for result in results} == {
+        "manifest-edge-gateway-pdf-20260331-001",
+        "manifest-tickets-synthetic-20260331-001",
+        "manifest-workspace-helpcenter-20260331-001",
+    }
+    assert all(result.warn_count == 0 for result in results)
+    assert all(result.quarantine_count == 0 for result in results)
+    assert all(result.fail_count == 0 for result in results)

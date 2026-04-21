@@ -74,7 +74,10 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 
 # 5. dry-run seed loader（无本地依赖）
 docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
-  python -m pipelines.ingestion.seed_loader --manifest-dir data/seed_manifests
+  python -m pipelines.ingestion.seed_loader \
+    --manifest-path data/seed_manifests/manifest_edge_gateway_pdf_v1.json \
+    --manifest-path data/seed_manifests/manifest_tickets_synthetic_v1.json \
+    --manifest-path data/seed_manifests/manifest_workspace_helpcenter_v1.json
 
 # 6. 运行契约测试（无本地依赖）
 docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \

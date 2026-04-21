@@ -5,6 +5,8 @@ Week03: 接入真实 MinIO 上传 + PostgreSQL 写入。
 
 使用方式:
     python -m pipelines.ingestion.seed_loader --manifest-dir data/seed_manifests
+    python -m pipelines.ingestion.seed_loader \
+        --manifest-path data/seed_manifests/manifest_tickets_synthetic_v1.json
 """
 
 import argparse
@@ -262,23 +264,45 @@ class SeedLoader:
     def __init__(
         self,
         manifest_dir: Path,
+        manifest_paths: list[Path] | None = None,
         batch_id: str | None = None,
         dry_run: bool = True,
         report_path: Path | None = None,
     ):
         self.manifest_dir = manifest_dir
+        self.manifest_paths = manifest_paths or []
         self.batch_id = batch_id or f"batch-{datetime.now(timezone.utc).strftime('%Y%m%d')}-auto"
         self.dry_run = dry_run
         self.report_path = report_path
         self.validator = ManifestValidator()
         self.rejected_manifests: list[dict[str, Any]] = []
 
+    def _iter_manifest_paths(self) -> list[Path]:
+        if self.manifest_paths:
+            paths: list[Path] = []
+            seen: set[Path] = set()
+            for path in self.manifest_paths:
+                if path.name.startswith("source_manifest"):
+                    raise ValueError(f"Schema file is not a runnable manifest: {path}")
+                if not path.exists():
+                    raise FileNotFoundError(f"Manifest file not found: {path}")
+                resolved = path.resolve()
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+                paths.append(path)
+            return paths
+
+        return sorted(
+            path
+            for path in self.manifest_dir.glob("*.json")
+            if not path.name.startswith("source_manifest")
+        )
+
     def load_manifests(self) -> list[dict]:
-        """加载目录下所有 manifest 文件（跳过 schema 文件）"""
+        """加载 manifest 文件（显式路径优先，其次扫描目录）"""
         manifests = []
-        for path in sorted(self.manifest_dir.glob("*.json")):
-            if path.name.startswith("source_manifest"):
-                continue
+        for path in self._iter_manifest_paths():
             try:
                 data = json.loads(path.read_text())
                 manifests.append(data)
@@ -515,6 +539,7 @@ class SeedLoader:
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "dry_run": self.dry_run,
             "manifest_dir": str(self.manifest_dir),
+            "manifest_paths": [str(path) for path in self.manifest_paths],
             "summary": {
                 "accepted_count": sum(result.accepted_count for result in results),
                 "warn_count": sum(result.warn_count for result in results),
@@ -549,6 +574,14 @@ def main():
         default=PROJECT_ROOT / "data" / "seed_manifests",
     )
     parser.add_argument(
+        "--manifest-path",
+        dest="manifest_paths",
+        action="append",
+        type=Path,
+        default=None,
+        help="可重复传入：只运行指定 manifest 文件，适合课程按周锁定基线范围",
+    )
+    parser.add_argument(
         "--batch-id",
         type=str,
         default=None,
@@ -571,6 +604,7 @@ def main():
 
     loader = SeedLoader(
         manifest_dir=args.manifest_dir,
+        manifest_paths=args.manifest_paths,
         batch_id=args.batch_id,
         dry_run=not args.no_dry_run,
         report_path=args.report_json,

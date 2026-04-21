@@ -82,10 +82,12 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 ```bash
 docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
   python -m pipelines.ingestion.seed_loader \
-  --manifest-dir data/seed_manifests
+  --manifest-path data/seed_manifests/manifest_edge_gateway_pdf_v1.json \
+  --manifest-path data/seed_manifests/manifest_tickets_synthetic_v1.json \
+  --manifest-path data/seed_manifests/manifest_workspace_helpcenter_v1.json
 ```
 
-预期输出：显示 3 个 manifest，无 REJECTED 条目，成功率 100%。
+预期输出：显示 **3 个 Week01 baseline manifest**，无 `REJECTED / WARN / QUARANTINE` 条目，资产结果全部为 `accept`。
 
 ---
 
