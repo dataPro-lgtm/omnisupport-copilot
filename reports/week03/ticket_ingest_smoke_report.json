@@ -1,0 +1,19 @@
+{
+  "report_version": "week03_ticket_ingest_smoke_report_v1",
+  "report_kind": "ticket_ingest_smoke",
+  "run_id": "ticket-ingest::batch-week03-ticket-smoke",
+  "generated_at": "2026-04-23T17:32:03.814256+00:00",
+  "batch_id": "batch-week03-ticket-smoke",
+  "input": "tests/integration/fixtures/week03/tickets-smoke.jsonl",
+  "dry_run": true,
+  "summary": {
+    "total": 2,
+    "valid": 2,
+    "invalid": 0,
+    "inserted": 0,
+    "skipped": 2,
+    "errors": 0
+  },
+  "status": "ok",
+  "recommended_action": "proceed_to_next_stage"
+}

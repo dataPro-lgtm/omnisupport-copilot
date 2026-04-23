@@ -1,0 +1,19 @@
+{
+  "report_version": "week03_doc_ingest_smoke_report_v1",
+  "report_kind": "doc_ingest_smoke",
+  "run_id": "doc-ingest::batch-week03-doc-smoke",
+  "generated_at": "2026-04-23T17:32:04.306115+00:00",
+  "batch_id": "batch-week03-doc-smoke",
+  "manifest_path": "data/seed_manifests/manifest_workspace_helpcenter_v1.json",
+  "dry_run": true,
+  "summary": {
+    "total": 4,
+    "uploaded": 0,
+    "skipped": 4,
+    "db_inserted": 0,
+    "errors": 0
+  },
+  "validation_errors": [],
+  "status": "ok",
+  "recommended_action": "proceed_to_next_stage"
+}

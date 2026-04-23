@@ -1,0 +1,119 @@
+{
+  "report_version": "week03_seed_loader_smoke_report_v1",
+  "report_kind": "seed_loader_smoke",
+  "run_id": "seed-loader::batch-20260423-auto",
+  "batch_id": "batch-20260423-auto",
+  "generated_at": "2026-04-23T17:32:03.274032+00:00",
+  "dry_run": true,
+  "manifest_dir": "/workspace/data/seed_manifests",
+  "manifest_paths": [
+    "data/seed_manifests/manifest_edge_gateway_pdf_v1.json",
+    "data/seed_manifests/manifest_tickets_synthetic_v1.json",
+    "data/seed_manifests/manifest_workspace_helpcenter_v1.json"
+  ],
+  "summary": {
+    "accepted_count": 9,
+    "warn_count": 0,
+    "quarantine_count": 0,
+    "reject_count": 0,
+    "rejected_manifests": 0
+  },
+  "status": "ok",
+  "recommended_action": "proceed_to_next_stage",
+  "results": [
+    {
+      "manifest_id": "manifest-edge-gateway-pdf-20260331-001",
+      "modality": "document",
+      "total_assets": 3,
+      "accepted_count": 3,
+      "warn_count": 0,
+      "quarantine_count": 0,
+      "reject_count": 0,
+      "run_at": "2026-04-23T17:32:03.273577+00:00",
+      "errors": [],
+      "run_evidence": [
+        {
+          "source_id": "doc:edge:000000000001",
+          "contract_ref": "omni://contracts/data/doc_asset/v1",
+          "gate_judgment": "accept",
+          "reasons": []
+        },
+        {
+          "source_id": "doc:edge:000000000002",
+          "contract_ref": "omni://contracts/data/doc_asset/v1",
+          "gate_judgment": "accept",
+          "reasons": []
+        },
+        {
+          "source_id": "doc:edge:000000000003",
+          "contract_ref": "omni://contracts/data/doc_asset/v1",
+          "gate_judgment": "accept",
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "manifest_id": "manifest-tickets-synthetic-20260331-001",
+      "modality": "structured",
+      "total_assets": 2,
+      "accepted_count": 2,
+      "warn_count": 0,
+      "quarantine_count": 0,
+      "reject_count": 0,
+      "run_at": "2026-04-23T17:32:03.273785+00:00",
+      "errors": [],
+      "run_evidence": [
+        {
+          "source_id": "structured:tickets:seed_batch_001",
+          "contract_ref": "omni://contracts/data/ticket/v1",
+          "gate_judgment": "accept",
+          "reasons": []
+        },
+        {
+          "source_id": "structured:tickets:msdialog_sample",
+          "contract_ref": "omni://contracts/data/ticket/v1",
+          "gate_judgment": "accept",
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "manifest_id": "manifest-workspace-helpcenter-20260331-001",
+      "modality": "document",
+      "total_assets": 4,
+      "accepted_count": 4,
+      "warn_count": 0,
+      "quarantine_count": 0,
+      "reject_count": 0,
+      "run_at": "2026-04-23T17:32:03.273874+00:00",
+      "errors": [],
+      "run_evidence": [
+        {
+          "source_id": "doc:workspace:000000000001",
+          "contract_ref": "omni://contracts/data/doc_asset/v1",
+          "gate_judgment": "accept",
+          "reasons": []
+        },
+        {
+          "source_id": "doc:workspace:000000000002",
+          "contract_ref": "omni://contracts/data/doc_asset/v1",
+          "gate_judgment": "accept",
+          "reasons": []
+        },
+        {
+          "source_id": "doc:workspace:000000000003",
+          "contract_ref": "omni://contracts/data/doc_asset/v1",
+          "gate_judgment": "accept",
+          "reasons": []
+        },
+        {
+          "source_id": "doc:workspace:000000000004",
+          "contract_ref": "omni://contracts/data/doc_asset/v1",
+          "gate_judgment": "accept",
+          "reasons": []
+        }
+      ]
+    }
+  ],
+  "rejected_manifests": []
+}

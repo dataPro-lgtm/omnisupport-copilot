@@ -1,0 +1,26 @@
+{
+  "mode": "replay",
+  "source_id": "structured:tickets:seed_batch_001",
+  "dry_run": true,
+  "batch_id": null,
+  "start_cursor": null,
+  "end_cursor": null,
+  "checkpoint_snapshot": {
+    "source_id": "structured:tickets:seed_batch_001",
+    "last_processed_cursor": "2026-03-31T00:00:00Z",
+    "last_success_batch_id": "batch-20260331-001",
+    "last_run_id": "seed-loader::batch-20260331-001",
+    "updated_at": "2026-04-24T00:00:00+00:00"
+  },
+  "execution_plan": [
+    "Resolve source scope for structured:tickets:seed_batch_001.",
+    "Inspect the latest ingest checkpoint before taking recovery action.",
+    "Reprocess an already known historical batch from the raw zone.",
+    "Replay batch batch-20260331-001.",
+    "Write a Week03 recovery decision report before touching downstream storage."
+  ],
+  "warnings": [],
+  "recommended_action": "proceed_to_next_stage",
+  "status": "ok",
+  "generated_at": "2026-04-23T17:32:04.100890+00:00"
+}

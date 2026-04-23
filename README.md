@@ -143,6 +143,23 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 
 ---
 
+## 课程交付与 Repo 逻辑图
+
+![AI 数据工程课程 Repo 逻辑链路总图](docs/assets/readme-course-repo-logic-map.png)
+
+这张图不是单纯的目录树，而是把三层关系放在一起看：
+- 课程站点（Quarto）如何展开到周页、课时页、实验页、Live 演示页
+- `omnisupport-copilot` 主仓库如何按周推进到数据契约、采集、湖仓、解析、检索、工具、评测与治理
+- 横切能力如何在 `docs/`、`tests/`、`runbooks/`、`observability/`、`contracts/release/` 之间复用
+
+阅读建议：
+- 想先理解系统能力边界：看上面的“七层架构总览”
+- 想理解本地怎么跑起来：看上面的“本地部署拓扑”
+- 想理解课程与主仓库如何逐周对齐：看这张“Repo 逻辑图”
+- 想直接定位文件夹：继续看下面的“仓库结构”
+
+---
+
 ## 仓库结构
 
 ```

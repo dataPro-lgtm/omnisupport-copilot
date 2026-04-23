@@ -21,6 +21,13 @@ from typing import Any, Iterator
 
 import jsonschema
 
+from pipelines.ingestion.reporting import (
+    recommend_recovery_action,
+    summarize_status,
+    utc_now_iso,
+    write_json_report,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -534,19 +541,38 @@ class SeedLoader:
         print("=" * 60 + "\n")
 
     def _write_report_json(self, results: list[IngestResult], rejected: list[dict]):
+        total_warn = sum(result.warn_count for result in results)
+        total_quarantine = sum(result.quarantine_count for result in results)
+        total_reject = sum(result.fail_count for result in results)
+        total_rejected_manifests = len(rejected)
         report_payload = {
+            "report_version": "week03_seed_loader_smoke_report_v1",
+            "report_kind": "seed_loader_smoke",
+            "run_id": f"seed-loader::{self.batch_id}",
             "batch_id": self.batch_id,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": utc_now_iso(),
             "dry_run": self.dry_run,
             "manifest_dir": str(self.manifest_dir),
             "manifest_paths": [str(path) for path in self.manifest_paths],
             "summary": {
                 "accepted_count": sum(result.accepted_count for result in results),
-                "warn_count": sum(result.warn_count for result in results),
-                "quarantine_count": sum(result.quarantine_count for result in results),
-                "reject_count": sum(result.fail_count for result in results),
-                "rejected_manifests": len(rejected),
+                "warn_count": total_warn,
+                "quarantine_count": total_quarantine,
+                "reject_count": total_reject,
+                "rejected_manifests": total_rejected_manifests,
             },
+            "status": summarize_status(
+                errors=total_reject,
+                warnings=total_warn,
+                quarantined=total_quarantine,
+                invalid=total_rejected_manifests,
+            ),
+            "recommended_action": recommend_recovery_action(
+                errors=total_reject,
+                invalid=total_rejected_manifests,
+                warnings=total_warn,
+                quarantined=total_quarantine,
+            ),
             "results": [result.to_report_dict() for result in results],
             "rejected_manifests": [
                 {
@@ -557,11 +583,9 @@ class SeedLoader:
             ],
         }
 
-        self.report_path.parent.mkdir(parents=True, exist_ok=True)
-        self.report_path.write_text(
-            json.dumps(report_payload, ensure_ascii=False, indent=2) + "\n"
-        )
-        logger.info("Wrote run evidence report to %s", self.report_path)
+        final_path = write_json_report(report_payload, self.report_path)
+        if final_path:
+            logger.info("Wrote run evidence report to %s", final_path)
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────

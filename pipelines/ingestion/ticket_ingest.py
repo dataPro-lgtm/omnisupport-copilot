@@ -22,6 +22,13 @@ from typing import AsyncIterator
 
 import jsonschema
 
+from pipelines.ingestion.reporting import (
+    recommend_recovery_action,
+    summarize_status,
+    utc_now_iso,
+    write_json_report,
+)
+
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -181,6 +188,7 @@ async def run_ingest(
     batch_id: str,
     dry_run: bool = False,
     limit: int | None = None,
+    report_path: Path | None = None,
 ) -> dict:
     from pipelines.ingestion.db import acquire
 
@@ -191,9 +199,10 @@ async def run_ingest(
         "inserted": 0, "skipped": 0, "errors": 0,
         "batch_id": batch_id,
         "input": str(input_path),
+        "dry_run": dry_run,
     }
 
-    async with acquire() as conn:
+    if dry_run:
         async for ticket in iter_jsonl(input_path):
             if limit and stats["total"] >= limit:
                 break
@@ -207,27 +216,40 @@ async def run_ingest(
 
             stats["valid"] += 1
 
-            if dry_run:
-                stats["skipped"] += 1
-                logger.debug(f"[dry-run] {ticket['ticket_id']}")
-                continue
+            stats["skipped"] += 1
+            logger.debug(f"[dry-run] {ticket['ticket_id']}")
+    else:
+        async with acquire() as conn:
+            async for ticket in iter_jsonl(input_path):
+                if limit and stats["total"] >= limit:
+                    break
 
-            try:
-                async with conn.transaction():
-                    await upsert_ticket_bronze(conn, ticket, batch_id)
-                    await upsert_ticket_silver(conn, ticket, batch_id)
-                stats["inserted"] += 1
-            except Exception as e:
-                stats["errors"] += 1
-                logger.error(f"DB error for {ticket.get('ticket_id')}: {e}")
+                stats["total"] += 1
+                errs = validator.validate(ticket)
+                if errs:
+                    stats["invalid"] += 1
+                    logger.warning(f"Ticket {ticket.get('ticket_id')} invalid: {errs}")
+                    continue
 
-            if stats["total"] % 100 == 0:
-                logger.info(
-                    f"Progress: {stats['total']} processed, "
-                    f"{stats['inserted']} inserted, {stats['errors']} errors"
-                )
+                stats["valid"] += 1
+
+                try:
+                    async with conn.transaction():
+                        await upsert_ticket_bronze(conn, ticket, batch_id)
+                        await upsert_ticket_silver(conn, ticket, batch_id)
+                    stats["inserted"] += 1
+                except Exception as e:
+                    stats["errors"] += 1
+                    logger.error(f"DB error for {ticket.get('ticket_id')}: {e}")
+
+                if stats["total"] % 100 == 0:
+                    logger.info(
+                        f"Progress: {stats['total']} processed, "
+                        f"{stats['inserted']} inserted, {stats['errors']} errors"
+                    )
 
     _log_summary(stats)
+    _write_ticket_report(stats, report_path)
     return stats
 
 
@@ -246,6 +268,32 @@ def _log_summary(stats: dict):
     )
 
 
+def _write_ticket_report(stats: dict, report_path: Path | None):
+    payload = {
+        "report_version": "week03_ticket_ingest_smoke_report_v1",
+        "report_kind": "ticket_ingest_smoke",
+        "run_id": f"ticket-ingest::{stats['batch_id']}",
+        "generated_at": utc_now_iso(),
+        "batch_id": stats["batch_id"],
+        "input": stats["input"],
+        "dry_run": stats["dry_run"],
+        "summary": {
+            "total": stats["total"],
+            "valid": stats["valid"],
+            "invalid": stats["invalid"],
+            "inserted": stats["inserted"],
+            "skipped": stats["skipped"],
+            "errors": stats["errors"],
+        },
+        "status": summarize_status(errors=stats["errors"], invalid=stats["invalid"]),
+        "recommended_action": recommend_recovery_action(
+            errors=stats["errors"],
+            invalid=stats["invalid"],
+        ),
+    }
+    write_json_report(payload, report_path, default_name="ticket_ingest_smoke_report.json")
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main():
@@ -254,6 +302,7 @@ def main():
     parser.add_argument("--batch-id", default=f"batch-{datetime.now(timezone.utc).strftime('%Y%m%d')}-001")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--report-json", type=Path, default=None)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -263,7 +312,7 @@ def main():
         sys.exit(1)
 
     stats = asyncio.run(
-        run_ingest(args.input, args.batch_id, args.dry_run, args.limit)
+        run_ingest(args.input, args.batch_id, args.dry_run, args.limit, args.report_json)
     )
     sys.exit(1 if stats["errors"] > 0 else 0)
 

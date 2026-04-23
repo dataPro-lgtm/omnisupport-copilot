@@ -1,0 +1,19 @@
+{
+  "schema_version": "week03_ingest_state_v1",
+  "checkpoints": [
+    {
+      "source_id": "structured:tickets:seed_batch_001",
+      "last_processed_cursor": "2026-03-31T00:00:00Z",
+      "last_success_batch_id": "batch-20260331-001",
+      "last_run_id": "seed-loader::batch-20260331-001",
+      "updated_at": "2026-04-24T00:00:00+00:00"
+    },
+    {
+      "source_id": "doc:workspace:000000000001",
+      "last_processed_cursor": "2026-03-31T00:00:00Z",
+      "last_success_batch_id": "batch-20260331-001",
+      "last_run_id": "doc-ingest::batch-20260331-001",
+      "updated_at": "2026-04-24T00:00:00+00:00"
+    }
+  ]
+}

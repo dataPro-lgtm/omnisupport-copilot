@@ -20,12 +20,16 @@ import mimetypes
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import AsyncIterator
 from urllib.parse import urlparse
 
-logger = logging.getLogger(__name__)
+from pipelines.ingestion.reporting import (
+    recommend_recovery_action,
+    summarize_status,
+    utc_now_iso,
+    write_json_report,
+)
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+logger = logging.getLogger(__name__)
 
 
 # ── MinIO 客户端封装 ──────────────────────────────────────────────────────────
@@ -34,8 +38,10 @@ class MinIOClient:
     """S3 兼容对象存储客户端"""
 
     def __init__(self):
-        import boto3
         import os
+
+        import boto3
+
         self._s3 = boto3.client(
             "s3",
             endpoint_url=os.environ.get("MINIO_ENDPOINT", "http://localhost:9000"),
@@ -168,20 +174,35 @@ async def run_doc_ingest(
     source_dir: Path | None,
     batch_id: str,
     dry_run: bool = False,
+    report_path: Path | None = None,
 ) -> dict:
     from pipelines.ingestion.db import acquire
-    from pipelines.ingestion.seed_loader import SeedLoader, ManifestValidator
+    from pipelines.ingestion.seed_loader import ManifestValidator, SeedLoader
 
     manifest = json.loads(manifest_path.read_text())
     errs = ManifestValidator().validate(manifest)
     if errs:
         logger.error(f"Manifest invalid: {errs}")
+        stats = {
+            "total": 0,
+            "uploaded": 0,
+            "skipped": 0,
+            "db_inserted": 0,
+            "errors": len(errs),
+            "batch_id": batch_id,
+            "manifest_path": str(manifest_path),
+            "dry_run": dry_run,
+            "validation_errors": errs,
+        }
+        _write_doc_report(stats, report_path)
         return {"errors": errs}
 
     stats = {
         "total": 0, "uploaded": 0, "skipped": 0,
         "db_inserted": 0, "errors": 0,
         "batch_id": batch_id,
+        "manifest_path": str(manifest_path),
+        "dry_run": dry_run,
     }
 
     minio: MinIOClient | None = None
@@ -193,63 +214,65 @@ async def run_doc_ingest(
 
     loader = SeedLoader(manifest_path.parent, batch_id=batch_id, dry_run=dry_run)
 
-    async with acquire() as conn:
+    if dry_run:
         for asset in loader.iter_assets(manifest):
             stats["total"] += 1
             source_id = asset["source_id"]
-            source_path = asset["source_url_or_path"]
+            logger.info(f"[dry-run] Would ingest doc: {source_id}")
+            stats["skipped"] += 1
+    else:
+        async with acquire() as conn:
+            for asset in loader.iter_assets(manifest):
+                stats["total"] += 1
+                source_id = asset["source_id"]
+                source_path = asset["source_url_or_path"]
 
-            if dry_run:
-                logger.info(f"[dry-run] Would ingest doc: {source_id}")
-                stats["skipped"] += 1
-                continue
+                # ── 读取文件字节 ─────────────────────────────────────────────────
+                raw_bytes = await read_asset_bytes(source_path, source_dir)
+                if raw_bytes is None:
+                    logger.warning(f"File not found, skipping: {source_path}")
+                    stats["skipped"] += 1
+                    continue
 
-            # ── 读取文件字节 ─────────────────────────────────────────────────
-            raw_bytes = await read_asset_bytes(source_path, source_dir)
-            if raw_bytes is None:
-                logger.warning(f"File not found, skipping: {source_path}")
-                stats["skipped"] += 1
-                continue
+                fingerprint = hashlib.sha256(raw_bytes).hexdigest()
 
-            fingerprint = hashlib.sha256(raw_bytes).hexdigest()
+                # ── MinIO 上传 ────────────────────────────────────────────────────
+                raw_object_path = source_path   # 默认保持原路径
+                if minio:
+                    bucket = "omni-raw-documents"
+                    product = asset.get("_product_line", "unknown")
+                    key = f"{product}/{asset.get('asset_type', 'misc')}/{Path(source_path).name}"
 
-            # ── MinIO 上传 ────────────────────────────────────────────────────
-            raw_object_path = source_path   # 默认保持原路径
-            if minio:
-                bucket = "omni-raw-documents"
-                modality = asset.get("_modality", "document")
-                product = asset.get("_product_line", "unknown")
-                key = f"{product}/{asset.get('asset_type', 'misc')}/{Path(source_path).name}"
+                    if not minio.object_exists(bucket, key):
+                        try:
+                            ext = Path(source_path).suffix.lower()
+                            content_type = {
+                                ".pdf": "application/pdf",
+                                ".html": "text/html",
+                                ".json": "application/json",
+                            }.get(ext, "application/octet-stream")
+                            raw_object_path = minio.upload_bytes(bucket, key, raw_bytes, content_type)
+                            stats["uploaded"] += 1
+                        except Exception as e:
+                            logger.error(f"MinIO upload failed for {source_id}: {e}")
+                            stats["errors"] += 1
+                            continue
+                    else:
+                        raw_object_path = f"s3://{bucket}/{key}"
+                        logger.debug(f"Already in MinIO, skipping upload: {key}")
 
-                if not minio.object_exists(bucket, key):
-                    try:
-                        ext = Path(source_path).suffix.lower()
-                        content_type = {
-                            ".pdf": "application/pdf",
-                            ".html": "text/html",
-                            ".json": "application/json",
-                        }.get(ext, "application/octet-stream")
-                        raw_object_path = minio.upload_bytes(bucket, key, raw_bytes, content_type)
-                        stats["uploaded"] += 1
-                    except Exception as e:
-                        logger.error(f"MinIO upload failed for {source_id}: {e}")
-                        stats["errors"] += 1
-                        continue
-                else:
-                    raw_object_path = f"s3://{bucket}/{key}"
-                    logger.debug(f"Already in MinIO, skipping upload: {key}")
-
-            # ── DB 写入 ───────────────────────────────────────────────────────
-            try:
-                async with conn.transaction():
-                    await upsert_raw_doc_asset(conn, asset, batch_id, raw_object_path, fingerprint)
-                    await upsert_knowledge_doc(conn, asset, source_id, batch_id)
-                stats["db_inserted"] += 1
-            except Exception as e:
-                logger.error(f"DB write failed for {source_id}: {e}")
-                stats["errors"] += 1
+                # ── DB 写入 ───────────────────────────────────────────────────────
+                try:
+                    async with conn.transaction():
+                        await upsert_raw_doc_asset(conn, asset, batch_id, raw_object_path, fingerprint)
+                        await upsert_knowledge_doc(conn, asset, source_id, batch_id)
+                    stats["db_inserted"] += 1
+                except Exception as e:
+                    logger.error(f"DB write failed for {source_id}: {e}")
+                    stats["errors"] += 1
 
     _log_doc_summary(stats)
+    _write_doc_report(stats, report_path)
     return stats
 
 
@@ -267,6 +290,29 @@ def _log_doc_summary(stats: dict):
     )
 
 
+def _write_doc_report(stats: dict, report_path: Path | None):
+    payload = {
+        "report_version": "week03_doc_ingest_smoke_report_v1",
+        "report_kind": "doc_ingest_smoke",
+        "run_id": f"doc-ingest::{stats['batch_id']}",
+        "generated_at": utc_now_iso(),
+        "batch_id": stats["batch_id"],
+        "manifest_path": stats["manifest_path"],
+        "dry_run": stats["dry_run"],
+        "summary": {
+            "total": stats["total"],
+            "uploaded": stats["uploaded"],
+            "skipped": stats["skipped"],
+            "db_inserted": stats["db_inserted"],
+            "errors": stats["errors"],
+        },
+        "validation_errors": stats.get("validation_errors", []),
+        "status": summarize_status(errors=stats["errors"]),
+        "recommended_action": recommend_recovery_action(errors=stats["errors"]),
+    }
+    write_json_report(payload, report_path, default_name="doc_ingest_smoke_report.json")
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main():
@@ -275,12 +321,13 @@ def main():
     parser.add_argument("--source-dir", type=Path, default=None, help="本地文档目录（可选）")
     parser.add_argument("--batch-id", default=f"batch-{datetime.now(timezone.utc).strftime('%Y%m%d')}-001")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--report-json", type=Path, default=None)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     stats = asyncio.run(
-        run_doc_ingest(args.manifest, args.source_dir, args.batch_id, args.dry_run)
+        run_doc_ingest(args.manifest, args.source_dir, args.batch_id, args.dry_run, args.report_json)
     )
     sys.exit(1 if stats.get("errors", 0) > 0 else 0)
 
