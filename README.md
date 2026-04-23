@@ -156,7 +156,22 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 - 想先理解系统能力边界：看上面的“七层架构总览”
 - 想理解本地怎么跑起来：看上面的“本地部署拓扑”
 - 想理解课程与主仓库如何逐周对齐：看这张“Repo 逻辑图”
+- 想理解 `omnisupport-copilot` 单仓内部怎么从目录走到运行链路：看下面的“单仓代码与组件总览”
 - 想直接定位文件夹：继续看下面的“仓库结构”
+
+---
+
+## 单仓代码与组件总览
+
+![OmniSupport Copilot Repo 总体代码与组件规划图](docs/assets/readme-repo-code-component-map.png)
+
+这张图是 `omnisupport-copilot` 的单仓放大视图，重点不是课程站点，而是：
+- 仓库目录如何按 `infra / contracts / data / pipelines / services / docs / tests` 组织
+- 主运行链路如何从 `source -> ingestion -> lakehouse -> semantic -> retrieval -> application -> delivery` 逐层推进
+- PostgreSQL、MinIO、Dagster、FastAPI、Phoenix / OTel 这些运行时组件在仓库中的落点和职责
+- `contracts / docs / tests / runbooks / observability / governance` 这些横切能力如何贯穿全链路
+
+如果上一张图回答的是“课程如何和主仓库对齐交付”，这张图回答的是“主仓库内部到底怎么组织代码、组件和运行主线”。
 
 ---
 
