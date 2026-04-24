@@ -8,7 +8,7 @@
 
 ![Week02 输入控制面详细架构图](../../docs/assets/week02/input-control-plane-detailed-architecture.png)
 
-建议把这张图放在课时开头先讲 3-5 分钟，再进入具体文件。讲解顺序按图从左到右：
+建议把这张图先理解，再进入具体文件。理解顺序按图从左到右：
 - 设计时规则源：`asset_inventory / metadata_minimums / pii_policy_matrix`
 - 可执行约束：`contracts/data/*.json`
 - Runtime 声明层：`source_manifest_schema.json` 和 `manifest_*.json`
@@ -16,7 +16,7 @@
 - 运行产物 / 证据：`report / quarantine / accepted list / gate evidence`
 - 向 Week03 交接：`ticket_ingest.py / doc_ingest.py`
 
-课堂上可以先用这张图回答一句话：
+总的来说：
 - Week02 不是在“真正 ingest 很多数据”，而是在把“什么能进、为什么能进、没进怎么办”这套输入控制面搭起来。
 
 ## Files to Open
