@@ -15,14 +15,14 @@
 
 ![Week03 Ingest 详细架构图](../docs/assets/week03/ingest-detailed-architecture.png)
 
-建议先用这张图讲 3-5 分钟，再开始跑命令。讲解顺序按图从左到右：
+建议先理解这张图，再开始跑命令。理解顺序按图从左到右：
 - 输入声明层：`data/seed_manifests/*.json` 和 `source_manifest_schema.json`
 - 编排与入口层：`pipelines/definitions.py`、`seed_loader.py`、`ticket_ingest.py`、`doc_ingest.py`
 - structured ingest 主链路：manifest -> payload -> normalize -> idempotency -> raw event / ticket fact
 - document ingest 主链路：manifest -> object/file -> metadata -> raw asset / knowledge_doc -> ingest evidence
 - state / replay / backfill：`data/state/`、checkpoint、`replay_backfill.py`、run report
 
-课堂上可以先用一句话把 Week03 定住：
+总的来说：
 - Week03 的重点不是把 Lakehouse 和检索完全做完，而是把 ingest 主链路、state、replay/backfill、run evidence 这些“可继续扩展的基础骨架”搭起来。
 
 ## 前置条件
