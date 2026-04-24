@@ -10,7 +10,7 @@
 
 ![Week04 Lakehouse 详细架构图](../docs/assets/week04/lakehouse-detailed-architecture.png)
 
-建议先用这张图讲 5 分钟，再进入代码文件。讲解顺序按图从左到右：
+建议先理解这张图，再进入代码文件。理解顺序按图从左到右：
 - 上游交接层：Week03 的 `ticket_ingest.py` / `doc_ingest.py` 如何把结构化和文档资产交给 Week04
 - Week04 代码与编排层：`pipelines/lakehouse/assets.py`、`pipelines/lakehouse/iceberg_schemas.py`、`pipelines/definitions.py`
 - Catalog / Warehouse 运行时层：PostgreSQL SQL Catalog、MinIO Warehouse、Dagster orchestration
@@ -18,7 +18,7 @@
 - Silver Iceberg 层：形成 `ticket_current`、`knowledge_doc` 这类可查询、可演化的规范化表
 - Snapshot / Time Travel / Baseline：让“本次数据长什么样”变成可验证、可比较、可回滚的状态
 
-课堂上可以先用一句话把 Week04 定住：
+总的来说：
 - Week04 交付的不是“多几张表”，而是让 Week03 的 ingest 结果进入可复现、可回滚、可作为下游基座的数据底座。
 
 ## Files to Open
