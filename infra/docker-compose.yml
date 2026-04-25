@@ -155,13 +155,15 @@ services:
     image: dagster/dagster-k8s:latest
     container_name: omni_dagster
     restart: unless-stopped
-    command: dagster dev -h 0.0.0.0 -p 3000 -m pipelines
+    command: dagster dev -h 0.0.0.0 -p 3000 -m pipelines.definitions
     working_dir: /opt/dagster/app
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-omni}:${POSTGRES_PASSWORD:-omnipass}@postgres:5432/${POSTGRES_DB:-omnisupport}
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      DAGSTER_HOME: /opt/dagster/dagster_home
+      SEED_MANIFEST_PATH: /manifests
     ports:
       - "3000:3000"
     depends_on:
@@ -173,6 +175,7 @@ services:
       - omni_net
     volumes:
       - ../pipelines:/opt/dagster/app/pipelines
+      - ../data/seed_manifests:/manifests:ro
       - dagster_data:/opt/dagster/dagster_home
 
   # ─────────────────────────────────────────────────────────────────────────────
