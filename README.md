@@ -214,9 +214,41 @@ omnisupport-copilot/
 |------|------|---------|
 | W01 | ✅ | 工程基线、契约、seed manifest、蓝图 |
 | W02-03 | 🔄 | 四类数据契约、ingest pipeline |
-| W04 | 📅 | Iceberg Bronze/Silver、time travel |
+| W04 | 🔄 | PyIceberg SQL Catalog、MinIO warehouse、Bronze/Silver 四表物化、snapshot/time travel/schema evolution |
 | W05-08 | 📅 | KPI mart、多模态解析、混合检索、RAG API |
 | W09-15 | 📅 | Tool层、评测、Tracing、GraphRAG、治理、Capstone |
+
+## Week04 Lakehouse 最小闭环
+
+Week04 的学生主路径仍然是 Docker devbox，不要求宿主机安装 Python / PostgreSQL / MinIO。
+
+```bash
+# 1. 启动 Lakehouse 依赖
+docker compose --env-file infra/env/.env.local -f infra/docker-compose.yml up -d --build postgres minio minio_init
+
+# 2. 校验 Week04 环境契约
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.lakehouse.settings --check
+
+# 3. 加载 PyIceberg SQL Catalog 并确保 namespace / core tables
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.lakehouse.catalog --smoke
+
+# 4. 物化四张核心 Iceberg 表
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.lakehouse.materialize --all-core --report-json reports/week04/materialization_report.json
+
+# 5. 查看 snapshot / files / baseline
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.lakehouse.inspect_metadata --table silver.ticket_fact --view snapshots
+```
+
+Week04 runbook: [runbooks/week04/README.md](runbooks/week04/README.md)
+
+边界说明：
+- Week04 主执行路径是 `devbox` CLI。
+- Dagster 当前使用上游镜像，是 thin wrapper，不作为 PyIceberg 写入主路径。
+- 不引入 Spark / Hive / Nessie / Trino / REST catalog，不抢跑 Week05-08。
 
 ---
 

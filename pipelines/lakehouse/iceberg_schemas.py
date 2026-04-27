@@ -8,7 +8,6 @@ Week04: 使用 PyIceberg 在 MinIO 上真实建表。
 
 from typing import Any
 
-
 # ── Bronze 层 ─────────────────────────────────────────────────────────────────
 # 设计原则：保真落盘，不做过早业务解释，保留 source_fingerprint
 

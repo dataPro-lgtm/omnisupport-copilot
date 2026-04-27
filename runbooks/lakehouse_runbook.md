@@ -49,7 +49,33 @@
 
 ## 当前仓库状态
 
-- `pipelines/lakehouse/assets.py` 已有 Week04 的资产骨架和说明
-- `pipelines/lakehouse/iceberg_schemas.py` 已定义 Bronze / Silver / Gold 目标形态
-- 当前还没有完整的 PyIceberg materialization demo、time travel 脚本和 Week04 专属测试
-- 所以这份 runbook 现阶段更适合做“代码级讲解入口”，后续再接 Week04 的真实执行命令
+- `pipelines/lakehouse/assets.py` 仍保留 Dagster 资产视角，但 Week04 主执行路径是 devbox CLI
+- `pipelines/lakehouse/settings.py` 统一读取 Lakehouse 环境变量
+- `pipelines/lakehouse/catalog.py` 负责 PyIceberg SQL Catalog、MinIO bucket、namespace 与四张核心表
+- `pipelines/lakehouse/materialize.py` 负责把 PostgreSQL 的 Week03 ingest 结果物化到 Iceberg
+- `pipelines/lakehouse/inspect_metadata.py`、`demo_time_travel.py`、`demo_schema_evolution.py`、`perf_baseline.py` 提供课堂可执行 demo
+- 逐步执行手册见 `runbooks/week04/README.md`
+
+## Week04 可执行入口
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.lakehouse.catalog --smoke
+```
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.lakehouse.materialize --all-core --report-json reports/week04/materialization_report.json
+```
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.lakehouse.inspect_metadata --table silver.ticket_fact --view snapshots
+```
+
+## Week04 不做什么
+
+- 不引入 Spark / Hive / Nessie / Trino / REST catalog
+- 不把 Dagster 上游镜像当作 PyIceberg runtime
+- 不实现 Gold mart / dbt / semantic layer
+- 不迁移 RAG serving/indexing 到 Iceberg
