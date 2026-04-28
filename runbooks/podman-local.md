@@ -10,16 +10,6 @@ Compose provider and is not guaranteed to behave identically to Docker Compose.
 
 ## Current Compatibility Position
 
-Recommended answer for students:
-
-```text
-You can use the same Git repository. There is no separate non-Docker source
-tree. If Docker Desktop is blocked by company policy, try Podman Desktop or
-Podman CLI with Compose support. The course commands are mostly portable by
-replacing `docker compose` with `podman compose`, but this is a best-effort
-path and should be validated with the smoke tests below.
-```
-
 Project compose features that need validation on Podman:
 
 | Compose feature | Used by this repo | Expected Podman risk |
