@@ -1,0 +1,55 @@
+version: 1
+registry_id: week05_support_metrics_v1
+owner: analytics_engineering
+description: "Governed Week05 metrics exposed to query_support_kpis_v1."
+source_model: support_kpi_mart
+safe_view: agent_tool_input_view
+time_dimension: metric_date
+measure_column: metric_value
+max_window_days: 31
+allowed_dimensions:
+  - product_line
+  - priority
+  - org_id
+  - category
+allowed_filters:
+  - product_line
+  - priority
+  - org_id
+  - category
+  - data_release_id
+allowed_roles:
+  - support_ops
+  - instructor
+  - admin
+metrics:
+  - name: ticket_count
+    label: "Ticket Count"
+    description: "Number of tickets created in the selected date window."
+    aggregation: sum
+    allowed_roles: ["support_ops", "instructor", "admin"]
+  - name: open_ticket_count
+    label: "Open Ticket Count"
+    description: "Number of tickets still open at mart build time."
+    aggregation: sum
+    allowed_roles: ["support_ops", "instructor", "admin"]
+  - name: p1_ticket_count
+    label: "P1 Ticket Count"
+    description: "Number of P1 critical tickets created in the selected date window."
+    aggregation: sum
+    allowed_roles: ["support_ops", "instructor", "admin"]
+  - name: sla_breach_count
+    label: "SLA Breach Count"
+    description: "Number of tickets whose resolved/current time exceeded SLA due time."
+    aggregation: sum
+    allowed_roles: ["support_ops", "instructor", "admin"]
+  - name: escalation_count
+    label: "Escalation Count"
+    description: "Number of tickets in escalated status."
+    aggregation: sum
+    allowed_roles: ["support_ops", "instructor", "admin"]
+  - name: avg_backlog_age_days
+    label: "Average Backlog Age Days"
+    description: "Average case age in days for selected tickets."
+    aggregation: avg
+    allowed_roles: ["support_ops", "instructor", "admin"]

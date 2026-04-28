@@ -1,0 +1,134 @@
+{
+  "name": "query_support_kpis_v1",
+  "version": "v1.0",
+  "description": "Query governed support KPI metrics from the Week05 dbt mart. The caller can request only registry-approved metrics, dimensions, filters, and date windows. Raw SQL is not accepted.",
+  "input_schema": {
+    "type": "object",
+    "required": ["actor_role", "metrics", "date_from", "date_to"],
+    "properties": {
+      "actor_role": {
+        "type": "string",
+        "description": "Role of the tool caller. Must be allowed by the metric registry."
+      },
+      "actor_id": {
+        "type": "string",
+        "description": "Optional actor identifier for audit trails."
+      },
+      "metrics": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 6,
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      },
+      "date_from": {
+        "type": "string",
+        "format": "date"
+      },
+      "date_to": {
+        "type": "string",
+        "format": "date"
+      },
+      "dimensions": {
+        "type": "array",
+        "maxItems": 4,
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "default": []
+      },
+      "filters": {
+        "type": "object",
+        "default": {},
+        "additionalProperties": {
+          "oneOf": [
+            {"type": "string"},
+            {"type": "number"},
+            {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 50,
+              "items": {
+                "oneOf": [
+                  {"type": "string"},
+                  {"type": "number"}
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500,
+        "default": 100
+      }
+    },
+    "additionalProperties": false
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["allowed", "rows", "audit"],
+    "properties": {
+      "allowed": {"type": "boolean"},
+      "rows": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "denial_code": {"type": ["string", "null"]},
+      "message": {"type": ["string", "null"]},
+      "audit": {
+        "type": "object",
+        "required": ["tool_name", "registry_id", "actor_role", "metrics", "date_from", "date_to"],
+        "properties": {
+          "tool_name": {"type": "string"},
+          "registry_id": {"type": "string"},
+          "actor_role": {"type": "string"},
+          "actor_id": {"type": ["string", "null"]},
+          "metrics": {"type": "array", "items": {"type": "string"}},
+          "dimensions": {"type": "array", "items": {"type": "string"}},
+          "filters": {"type": "object"},
+          "date_from": {"type": "string"},
+          "date_to": {"type": "string"},
+          "row_count": {"type": "integer"},
+          "release_id": {"type": "string"}
+        }
+      }
+    }
+  },
+  "allowed_roles": ["support_ops", "instructor", "admin"],
+  "idempotent": true,
+  "idempotency_key_fields": ["actor_role", "metrics", "date_from", "date_to", "dimensions", "filters"],
+  "audit_fields": {
+    "log_input": true,
+    "log_output": true,
+    "log_actor": true,
+    "retention_days": 365
+  },
+  "failure_codes": {
+    "SCHEMA_VALIDATION_FAILED": "Input did not satisfy the tool JSON schema.",
+    "ROLE_DENIED": "Caller role is not allowed to use this metric registry.",
+    "METRIC_DENIED": "One or more requested metrics are not registered or not allowed for the caller role.",
+    "DIMENSION_DENIED": "One or more requested dimensions are not registered as safe dimensions.",
+    "FILTER_DENIED": "One or more filters are not registered as safe filters.",
+    "WINDOW_TOO_LARGE": "Requested date window exceeds the registry maximum.",
+    "DB_UNAVAILABLE": "KPI mart is unavailable or query failed."
+  },
+  "hitl_conditions": [
+    {
+      "condition": "caller requests metrics or filters outside the registry",
+      "action": "reject"
+    }
+  ],
+  "rate_limit": {
+    "calls_per_minute": 60,
+    "calls_per_hour": 1000
+  }
+}

@@ -134,6 +134,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
       OTEL_SERVICE_NAME: tool_api
       RELEASE_ID: ${RELEASE_ID:-dev-local}
+      METRIC_REGISTRY_PATH: /workspace/analytics/metric_registry_v1.yml
     ports:
       - "8001:8001"
     depends_on:
@@ -143,6 +144,8 @@ services:
       - omni_net
     volumes:
       - ../services/tool_api:/app
+      - ../analytics:/workspace/analytics:ro
+      - ../contracts:/workspace/contracts:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 15s
@@ -180,6 +183,15 @@ services:
       WEEK04_DATA_RELEASE_ID: ${WEEK04_DATA_RELEASE_ID:-week04-dev-local}
       WEEK04_INGEST_BATCH_ID: ${WEEK04_INGEST_BATCH_ID:-week04-smoke}
       WEEK04_REPORT_DIR: ${WEEK04_REPORT_DIR:-reports/week04}
+      DBT_TARGET: ${DBT_TARGET:-dev}
+      DBT_POSTGRES_HOST: ${DBT_POSTGRES_HOST:-postgres}
+      DBT_POSTGRES_PORT: ${DBT_POSTGRES_PORT:-5432}
+      POSTGRES_USER: ${POSTGRES_USER:-omni}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omnipass}
+      POSTGRES_DB: ${POSTGRES_DB:-omnisupport}
+      WEEK05_DATA_RELEASE_ID: ${WEEK05_DATA_RELEASE_ID:-week05-dev-local}
+      WEEK05_REPORT_DIR: ${WEEK05_REPORT_DIR:-reports/week05}
+      METRIC_REGISTRY_PATH: ${METRIC_REGISTRY_PATH:-/workspace/analytics/metric_registry_v1.yml}
     ports:
       - "3000:3000"
     depends_on:

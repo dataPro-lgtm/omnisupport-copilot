@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: stg_tickets
+    description: "Typed and normalized ticket facts for Week05 analytics."
+    columns:
+      - name: ticket_id
+        tests:
+          - not_null
+          - unique
+      - name: created_date
+        tests:
+          - not_null
+      - name: status
+        tests:
+          - not_null
+      - name: priority
+        tests:
+          - not_null
+      - name: pii_redacted
+        tests:
+          - not_null
+  - name: stg_customers
+    description: "Customer lookup without exposing contact PII downstream."
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+  - name: stg_ticket_comments
+    description: "Ticket comment metadata and preview text for response-time metrics."
+    columns:
+      - name: comment_id
+        tests:
+          - not_null
+  - name: stg_knowledge_docs
+    description: "Document metadata staging table for future retrieval metrics."
+    columns:
+      - name: doc_id
+        tests:
+          - not_null

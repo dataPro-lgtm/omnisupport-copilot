@@ -188,6 +188,7 @@ omnisupport-copilot/
 │   ├── parse_normalize/        # 文档解析 + 切片 + 证据链
 │   ├── lakehouse/              # Iceberg Bronze/Silver/Gold 表
 │   └── indexing/               # 向量索引构建
+├── analytics/                  # Week05 dbt Core 项目 + KPI mart + metric registry
 ├── contracts/                  # JSON Schema 数据/工具/发布契约
 │   ├── data/                   # 四类数据契约 (doc/ticket/audio/video)
 │   ├── tools/                  # 工具契约规范 + 具体工具定义
@@ -215,7 +216,8 @@ omnisupport-copilot/
 | W01 | ✅ | 工程基线、契约、seed manifest、蓝图 |
 | W02-03 | 🔄 | 四类数据契约、ingest pipeline |
 | W04 | 🔄 | PyIceberg SQL Catalog、MinIO warehouse、Bronze/Silver 四表物化、snapshot/time travel/schema evolution |
-| W05-08 | 📅 | KPI mart、多模态解析、混合检索、RAG API |
+| W05 | 🔄 | dbt Core、support KPI mart、metric registry、受控 KPI 查询工具 |
+| W06-08 | 📅 | 资产化编排、多模态解析、混合检索、RAG API |
 | W09-15 | 📅 | Tool层、评测、Tracing、GraphRAG、治理、Capstone |
 
 ## Week04 Lakehouse 最小闭环
@@ -249,6 +251,33 @@ Week04 runbook: [runbooks/week04/README.md](runbooks/week04/README.md)
 - Week04 主执行路径是 `devbox` CLI。
 - Dagster 当前使用上游镜像，是 thin wrapper，不作为 PyIceberg 写入主路径。
 - 不引入 Spark / Hive / Nessie / Trino / REST catalog，不抢跑 Week05-08。
+
+---
+
+## Week05 Analytics Engineering 最小闭环
+
+Week05 在不改变 Week01-Week04 主路径的前提下，新增 `analytics/` dbt Core 项目，并把 PostgreSQL 中的工单事实表转换为可治理的 KPI mart。
+
+```bash
+# 1. 构建 dbt 模型和测试
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  bash -lc 'cd analytics && DBT_PROFILES_DIR=. dbt build --select tag:week05'
+
+# 2. 校验 metric registry
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python analytics/scripts/validate_metric_registry.py --json
+
+# 3. 调用受控 KPI 查询工具
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  bash -lc 'PYTHONPATH=services/tool_api python -m app.kpi_query --example valid'
+```
+
+Week05 runbook: [runbooks/week05/README.md](runbooks/week05/README.md)
+
+边界说明：
+- Agent 只能通过 `query_support_kpis_v1` 查询 `analytics.agent_tool_input_view`。
+- 不接受 raw SQL，不暴露 PII 字段，不绕过 `metric_registry_v1.yml`。
+- dbt `target/` 和本地运行日志是临时产物，不提交。
 
 ---
 

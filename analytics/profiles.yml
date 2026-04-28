@@ -1,0 +1,13 @@
+omnisupport_analytics:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_POSTGRES_HOST', 'postgres') }}"
+      user: "{{ env_var('POSTGRES_USER', 'omni') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'omnipass') }}"
+      port: "{{ env_var('DBT_POSTGRES_PORT', '5432') | as_number }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'omnisupport') }}"
+      schema: analytics
+      threads: 4
+      connect_timeout: 10

@@ -1,0 +1,21 @@
+select
+    doc_id,
+    source_id,
+    asset_type,
+    product_line::text as product_line,
+    doc_version,
+    title,
+    language,
+    page_count,
+    section_count,
+    chunk_count,
+    source_url,
+    source_fingerprint,
+    license_tag,
+    lower(pii_level::text) as pii_level,
+    lower(quality_gate::text) as quality_gate,
+    data_release_id,
+    index_release_id,
+    indexed_at,
+    created_at
+from {{ source('omni_postgres', 'knowledge_doc') }}

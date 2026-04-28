@@ -5,15 +5,15 @@ Week01 骨架：提供 health check 和工具调用契约验证框架。
 Week10 起接入真实工单 CRUD、HITL 触发、审计日志。
 """
 
-from contextlib import asynccontextmanager
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.routers import health, tickets
+from app.routers import health, kpis, tickets
 
 
 @asynccontextmanager
@@ -60,3 +60,4 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 app.include_router(health.router)
 app.include_router(tickets.router, prefix="/api/v1/tools")
+app.include_router(kpis.router, prefix="/api/v1/tools")

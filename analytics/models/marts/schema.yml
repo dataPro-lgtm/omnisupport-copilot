@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: support_case_mart
+    description: "Safe case-level mart for Week05 analytics. PII contact fields and raw comment bodies are intentionally excluded."
+    columns:
+      - name: ticket_id
+        tests:
+          - not_null
+          - unique
+      - name: created_date
+        tests:
+          - not_null
+      - name: data_release_id
+        tests:
+          - not_null
+  - name: support_kpi_mart
+    description: "Controlled metric rows by date and safe business dimensions."
+    columns:
+      - name: metric_date
+        tests:
+          - not_null
+      - name: metric_name
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - ticket_count
+                - open_ticket_count
+                - p1_ticket_count
+                - sla_breach_count
+                - escalation_count
+                - avg_backlog_age_days
+      - name: metric_value
+        tests:
+          - not_null
+      - name: data_release_id
+        tests:
+          - not_null
+  - name: agent_tool_input_view
+    description: "Read-only safe view used by query_support_kpis_v1. No raw SQL access is exposed to Agent callers."
+    columns:
+      - name: metric_date
+        tests:
+          - not_null
+      - name: metric_name
+        tests:
+          - not_null
+      - name: metric_value
+        tests:
+          - not_null

@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: int_support_cases
+    description: "One row per support case with derived operational flags."
+    columns:
+      - name: ticket_id
+        tests:
+          - not_null
+          - unique
+      - name: created_date
+        tests:
+          - not_null
+      - name: pii_redacted
+        tests:
+          - not_null
+  - name: int_ticket_activity_daily
+    description: "Daily operational rollup by safe dimensions."
+    columns:
+      - name: activity_date
+        tests:
+          - not_null
+      - name: ticket_count
+        tests:
+          - not_null

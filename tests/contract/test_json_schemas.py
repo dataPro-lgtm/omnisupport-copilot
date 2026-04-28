@@ -26,6 +26,7 @@ TOOL_CONTRACTS = [
     CONTRACTS_DIR / "tools" / "tools" / "search_knowledge.json",
     CONTRACTS_DIR / "tools" / "tools" / "get_ticket_status.json",
     CONTRACTS_DIR / "tools" / "tools" / "create_ticket.json",
+    CONTRACTS_DIR / "tools" / "tools" / "query_support_kpis_v1.json",
 ]
 
 DATA_CONTRACTS = [

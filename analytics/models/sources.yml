@@ -1,0 +1,42 @@
+version: 2
+
+sources:
+  - name: omni_postgres
+    description: "Week03/Week04 structured support sources loaded into PostgreSQL."
+    database: "{{ env_var('POSTGRES_DB', 'omnisupport') }}"
+    schema: public
+    tables:
+      - name: ticket_fact
+        description: "Canonical structured support tickets."
+        columns:
+          - name: ticket_id
+            tests:
+              - not_null
+              - unique
+          - name: created_at
+            tests:
+              - not_null
+          - name: status
+            tests:
+              - not_null
+          - name: priority
+            tests:
+              - not_null
+      - name: customer_dim
+        description: "Customer and organization lookup."
+        columns:
+          - name: customer_id
+            tests:
+              - not_null
+      - name: ticket_comment_fact
+        description: "Ticket comments with generated body previews only exposed downstream."
+        columns:
+          - name: comment_id
+            tests:
+              - not_null
+      - name: knowledge_doc
+        description: "Canonical document metadata from document ingestion."
+        columns:
+          - name: doc_id
+            tests:
+              - not_null
