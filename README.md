@@ -190,6 +190,8 @@ omnisupport-copilot/
 │   └── tool_api/               # FastAPI 工单工具 + HITL + 审计 (port 8001)
 ├── pipelines/                  # Dagster 资产化 pipeline
 │   ├── ingestion/              # Seed loader + 采集资产
+│   ├── data_factory/           # Week06 资产化编排、partition、backfill、checks、evidence
+│   ├── resources/              # Pipeline runtime resources / env config
 │   ├── parse_normalize/        # 文档解析 + 切片 + 证据链
 │   ├── lakehouse/              # Iceberg Bronze/Silver/Gold 表
 │   └── indexing/               # 向量索引构建
@@ -197,7 +199,8 @@ omnisupport-copilot/
 ├── contracts/                  # JSON Schema 数据/工具/发布契约
 │   ├── data/                   # 四类数据契约 (doc/ticket/audio/video)
 │   ├── tools/                  # 工具契约规范 + 具体工具定义
-│   └── release/                # Release Manifest Schema
+│   ├── release/                # Release Manifest Schema
+│   └── run_evidence/           # Week06 运行证据契约
 ├── data/
 │   ├── seed_manifests/         # 种子数据清单
 │   ├── synthetic_generators/   # 合成工单/音频生成器
@@ -222,7 +225,8 @@ omnisupport-copilot/
 | W02-03 | 🔄 | 四类数据契约、ingest pipeline |
 | W04 | 🔄 | PyIceberg SQL Catalog、MinIO warehouse、Bronze/Silver 四表物化、snapshot/time travel/schema evolution |
 | W05 | 🔄 | dbt Core、support KPI mart、metric registry、受控 KPI 查询工具 |
-| W06-08 | 📅 | 资产化编排、多模态解析、混合检索、RAG API |
+| W06 | 🔄 | 资产化编排、daily partitions、backfill dry-run、asset checks、run evidence |
+| W07-08 | 📅 | 多模态解析、混合检索、RAG API |
 | W09-15 | 📅 | Tool层、评测、Tracing、GraphRAG、治理、Capstone |
 
 ## Week04 Lakehouse 最小闭环
@@ -283,6 +287,38 @@ Week05 runbook: [runbooks/week05/README.md](runbooks/week05/README.md)
 - Agent 只能通过 `query_support_kpis_v1` 查询 `analytics.agent_tool_input_view`。
 - 不接受 raw SQL，不暴露 PII 字段，不绕过 `metric_registry_v1.yml`。
 - dbt `target/` 和本地运行日志是临时产物，不提交。
+
+---
+
+## Week06 Data Factory 最小闭环
+
+Week06 在 Week03-Week05 的可执行路径之上新增资产化编排层：Dagster asset graph、daily partition、backfill dry-run、asset checks 和 run evidence。默认仍然走 Docker `devbox`，不要求学员宿主机安装 Python。
+
+```bash
+# 1. 校验 Week06 run evidence 契约
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  pytest tests/contract/test_week06_run_evidence_schema.py -q
+
+# 2. 校验 Dagster definitions 可加载
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  pytest tests/integration/test_week06_definitions_loadable.py -q
+
+# 3. 生成 backfill dry-run plan
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.data_factory.backfill_plan --partition 2026-04-17 --mode dry-run
+
+# 4. 跑 Week06 asset graph smoke
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  pytest tests/integration/test_week06_asset_graph_smoke.py -q
+```
+
+Week06 runbook: [runbooks/week06-data-factory.md](runbooks/week06-data-factory.md)
+
+边界说明：
+- Week06 复用 `pipelines/ingestion/ticket_ingest.py`，不复制或重写 Week03 业务写入逻辑。
+- 默认 `WEEK06_INGEST_DRY_RUN=true`，因此不会修改 PostgreSQL。
+- Week04 lakehouse / Week05 analytics 在 Week06 中是 optional observation，缺失时必须写 `not_available`，不能伪造成 passed。
+- Podman 使用同一个 compose 文件，详见 [runbooks/podman-local.md](runbooks/podman-local.md)。
 
 ---
 

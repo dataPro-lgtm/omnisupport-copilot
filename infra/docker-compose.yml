@@ -162,6 +162,7 @@ services:
     command: dagster dev -h 0.0.0.0 -p 3000 -m pipelines.definitions
     working_dir: /opt/dagster/app
     environment:
+      PYTHONPATH: /opt/dagster/app:/workspace
       DATABASE_URL: postgresql://${POSTGRES_USER:-omni}:${POSTGRES_PASSWORD:-omnipass}@postgres:5432/${POSTGRES_DB:-omnisupport}
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
@@ -192,6 +193,17 @@ services:
       WEEK05_DATA_RELEASE_ID: ${WEEK05_DATA_RELEASE_ID:-week05-dev-local}
       WEEK05_REPORT_DIR: ${WEEK05_REPORT_DIR:-reports/week05}
       METRIC_REGISTRY_PATH: ${METRIC_REGISTRY_PATH:-/workspace/analytics/metric_registry_v1.yml}
+      WEEK06_PROJECT_ROOT: ${WEEK06_PROJECT_ROOT:-/workspace}
+      WEEK06_DATA_RELEASE_ID: ${WEEK06_DATA_RELEASE_ID:-week06-dev-local}
+      WEEK06_REPORT_DIR: ${WEEK06_REPORT_DIR:-reports/week06}
+      WEEK06_PARTITION_START_DATE: ${WEEK06_PARTITION_START_DATE:-2026-03-01}
+      WEEK06_DEFAULT_PARTITION: ${WEEK06_DEFAULT_PARTITION:-2026-04-17}
+      WEEK06_TICKET_SEED_PATH: ${WEEK06_TICKET_SEED_PATH:-data/canonization/tickets/tickets-seed-001.jsonl}
+      WEEK06_INGEST_DRY_RUN: ${WEEK06_INGEST_DRY_RUN:-true}
+      WEEK06_INGEST_LIMIT: ${WEEK06_INGEST_LIMIT:-}
+      WEEK06_OPERATOR: ${WEEK06_OPERATOR:-student-devbox}
+      WEEK06_WEEK04_REPORT_PATH: ${WEEK06_WEEK04_REPORT_PATH:-reports/week04/materialization_report.json}
+      WEEK06_WEEK05_RUN_RESULTS_PATH: ${WEEK06_WEEK05_RUN_RESULTS_PATH:-analytics/target/run_results.json}
     ports:
       - "3000:3000"
     depends_on:
@@ -204,6 +216,12 @@ services:
     volumes:
       - ../pipelines:/opt/dagster/app/pipelines
       - ../data/seed_manifests:/manifests:ro
+      - ../contracts:/workspace/contracts:ro
+      - ../docs:/workspace/docs:ro
+      - ../runbooks:/workspace/runbooks:ro
+      - ../analytics:/workspace/analytics:ro
+      - ../data:/workspace/data:ro
+      - ../reports:/workspace/reports
       - dagster_data:/opt/dagster/dagster_home
 
   # ─────────────────────────────────────────────────────────────────────────────
@@ -295,6 +313,26 @@ services:
       WEEK04_DATA_RELEASE_ID: ${WEEK04_DATA_RELEASE_ID:-week04-dev-local}
       WEEK04_INGEST_BATCH_ID: ${WEEK04_INGEST_BATCH_ID:-week04-smoke}
       WEEK04_REPORT_DIR: ${WEEK04_REPORT_DIR:-reports/week04}
+      DBT_TARGET: ${DBT_TARGET:-dev}
+      DBT_POSTGRES_HOST: ${DBT_POSTGRES_HOST:-postgres}
+      DBT_POSTGRES_PORT: ${DBT_POSTGRES_PORT:-5432}
+      POSTGRES_USER: ${POSTGRES_USER:-omni}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omnipass}
+      POSTGRES_DB: ${POSTGRES_DB:-omnisupport}
+      WEEK05_DATA_RELEASE_ID: ${WEEK05_DATA_RELEASE_ID:-week05-dev-local}
+      WEEK05_REPORT_DIR: ${WEEK05_REPORT_DIR:-reports/week05}
+      METRIC_REGISTRY_PATH: ${METRIC_REGISTRY_PATH:-/workspace/analytics/metric_registry_v1.yml}
+      WEEK06_PROJECT_ROOT: ${WEEK06_PROJECT_ROOT:-/workspace}
+      WEEK06_DATA_RELEASE_ID: ${WEEK06_DATA_RELEASE_ID:-week06-dev-local}
+      WEEK06_REPORT_DIR: ${WEEK06_REPORT_DIR:-reports/week06}
+      WEEK06_PARTITION_START_DATE: ${WEEK06_PARTITION_START_DATE:-2026-03-01}
+      WEEK06_DEFAULT_PARTITION: ${WEEK06_DEFAULT_PARTITION:-2026-04-17}
+      WEEK06_TICKET_SEED_PATH: ${WEEK06_TICKET_SEED_PATH:-data/canonization/tickets/tickets-seed-001.jsonl}
+      WEEK06_INGEST_DRY_RUN: ${WEEK06_INGEST_DRY_RUN:-true}
+      WEEK06_INGEST_LIMIT: ${WEEK06_INGEST_LIMIT:-}
+      WEEK06_OPERATOR: ${WEEK06_OPERATOR:-student-devbox}
+      WEEK06_WEEK04_REPORT_PATH: ${WEEK06_WEEK04_REPORT_PATH:-reports/week04/materialization_report.json}
+      WEEK06_WEEK05_RUN_RESULTS_PATH: ${WEEK06_WEEK05_RUN_RESULTS_PATH:-analytics/target/run_results.json}
     volumes:
       - ..:/workspace
     networks:

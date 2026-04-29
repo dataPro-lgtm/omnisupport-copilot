@@ -1,0 +1,11 @@
+backfill/*.json
+checks/*.json
+run_evidence/*.json
+asset_checks_summary.md
+run_evidence_summary.md
+*.local.md
+*.tmp
+!.gitkeep
+!.gitignore
+!course_site_sync_notes.md
+!week06_delivery_summary.md

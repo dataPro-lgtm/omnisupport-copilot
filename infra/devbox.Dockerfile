@@ -11,6 +11,7 @@ COPY services/rag_api/requirements.txt /tmp/rag_api_requirements.txt
 COPY services/tool_api/requirements.txt /tmp/tool_api_requirements.txt
 COPY contracts ./contracts
 COPY data ./data
+COPY analytics ./analytics
 COPY pipelines ./pipelines
 COPY services ./services
 COPY tests ./tests

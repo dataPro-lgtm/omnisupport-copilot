@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "omni://contracts/run_evidence/week06/v1",
+  "title": "Week06 Run Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidence_schema_version",
+    "run_id",
+    "asset_key",
+    "partition_key",
+    "status",
+    "started_at",
+    "finished_at",
+    "report_path",
+    "reason_codes"
+  ],
+  "properties": {
+    "evidence_schema_version": {
+      "const": "week06_run_evidence_v1"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "asset_key": {
+      "type": "string",
+      "pattern": "^week06/"
+    },
+    "partition_key": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "warning", "skipped", "not_available", "failed"]
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "report_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "manifest_id": {
+      "type": "string"
+    },
+    "batch_id": {
+      "type": "string"
+    },
+    "input_row_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "output_row_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_snapshot_id": {
+      "type": ["string", "integer", "null"]
+    },
+    "output_snapshot_id": {
+      "type": ["string", "integer", "null"]
+    },
+    "dbt_invocation_id": {
+      "type": ["string", "null"]
+    },
+    "semantic_metric_count": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "lakehouse_snapshot_id": {
+      "type": ["string", "integer", "null"]
+    },
+    "data_release_id": {
+      "type": "string"
+    },
+    "trace_id": {
+      "type": "string"
+    },
+    "git_sha": {
+      "type": "string"
+    },
+    "downstream_decision": {
+      "type": "string",
+      "enum": [
+        "proceed_to_week07",
+        "manual_review_required",
+        "hold_downstream",
+        "dry_run_only"
+      ]
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "status", "reason_codes"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["passed", "warning", "skipped", "failed"]
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}

@@ -205,6 +205,31 @@ Expected pass criteria:
 | Week02 gate | seed manifests validate and emit gate output |
 | Week05 dbt | `dbt parse` passes; `dbt build` passes after seed data exists |
 
+Run the Week06 data factory smoke tests:
+
+```bash
+podman compose --profile tools --env-file infra/env/.env.local \
+  -f infra/docker-compose.yml run --rm devbox \
+  pytest tests/contract/test_week06_run_evidence_schema.py \
+    tests/integration/test_week06_definitions_loadable.py \
+    tests/integration/test_week06_backfill_plan.py \
+    tests/integration/test_week06_asset_checks.py \
+    tests/integration/test_week06_run_evidence_generation.py -q
+
+podman compose --profile tools --env-file infra/env/.env.local \
+  -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.data_factory.backfill_plan --partition 2026-04-17 --mode dry-run
+```
+
+Week06 expected pass criteria:
+
+| Area | Pass signal |
+|---|---|
+| Definitions | `week06_data_factory` job and `week06/*` assets load |
+| Backfill | dry-run JSON plan is written under `reports/week06/backfill/` |
+| Checks | five Student Core checks pass or warn without mutating DB |
+| Evidence | generated JSON validates against `contracts/run_evidence/week06_run_evidence.schema.json` |
+
 Full stack smoke test:
 
 ```bash
