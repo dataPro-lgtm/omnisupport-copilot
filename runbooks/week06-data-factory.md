@@ -2,6 +2,12 @@
 
 Week06 focuses on assetized orchestration, dry-run backfill, checks, and run evidence. It does not replace the Week03 ingest logic, Week04 lakehouse CLI path, or Week05 dbt path.
 
+## Code Reading Map
+
+Before running the lab, use this map to orient the code path. Read `config.py`, `asset_keys.py`, and `partitions.py` first, then follow the main chain in `assets.py`, and finally inspect `checks.py`, `backfill_plan.py`, `evidence.py`, and the tests.
+
+![Week06 Data Factory code reading map](../docs/assets/week06/week06-data-factory-code-map.png)
+
 ## Scope
 
 This runbook covers:
