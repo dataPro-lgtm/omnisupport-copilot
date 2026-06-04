@@ -158,7 +158,10 @@ services:
   # 6. Dagster — 资产化编排 (ingestion / parse / lakehouse / indexing)
   # ─────────────────────────────────────────────────────────────────────────────
   dagster:
-    image: dagster/dagster-k8s:latest
+    build:
+      context: ..
+      dockerfile: infra/dagster.Dockerfile
+    image: omnisupport-dagster:local
     container_name: omni_dagster
     restart: unless-stopped
     command: dagster dev -h 0.0.0.0 -p 3000 -m pipelines.definitions
