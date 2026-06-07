@@ -10,6 +10,12 @@ PII_RE = re.compile(
     r"([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})|(\b\d{3}[-.]?\d{2}[-.]?\d{4}\b)",
     re.IGNORECASE,
 )
+MEDIA_BLOCKING_REASON_CODES = {
+    "audio_transcript_sidecar_missing",
+    "image_ocr_text_empty",
+    "video_no_transcript_or_keyframe_ocr",
+    "media_binary_text_fallback_blocked",
+}
 
 
 @dataclass
@@ -61,6 +67,11 @@ def evaluate_quality_gate(
     synthetic_chunks = [
         chunk.chunk_id for chunk in chunks if "source_path_missing_synthetic_fallback" in chunk.reason_codes
     ]
+    media_blocked_chunks = [
+        chunk.chunk_id
+        for chunk in chunks
+        if MEDIA_BLOCKING_REASON_CODES.intersection(set(chunk.reason_codes))
+    ]
     pii_chunks = [chunk for chunk in chunks if PII_RE.search(chunk.content)]
     metadata_complete = sum(1 for chunk in chunks if _metadata_complete(chunk))
     metadata_completeness = metadata_complete / len(chunks) if chunks else 0.0
@@ -88,6 +99,8 @@ def evaluate_quality_gate(
         warnings.append("fallback_parser_used")
     if synthetic_chunks:
         warnings.append("source_path_missing_synthetic_fallback")
+    if media_blocked_chunks:
+        errors.append("media_extraction_incomplete")
     if pii_chunks:
         warnings.append("pii_suspected")
 
@@ -100,6 +113,7 @@ def evaluate_quality_gate(
             chunk.anchor_count > 0
             and bool(chunk.content.strip())
             and "source_path_missing_synthetic_fallback" not in chunk.reason_codes
+            and not MEDIA_BLOCKING_REASON_CODES.intersection(set(chunk.reason_codes))
             and not chunk.pii_detected
         )
         chunk.quality_status = "fail" if not chunk.allowed_for_indexing and not synthetic_chunks else quality_status
@@ -140,6 +154,7 @@ def evaluate_quality_gate(
         "pdf_missing_page_count": len(pdf_missing_page),
         "fallback_chunk_count": len(fallback_chunks),
         "synthetic_source_chunk_count": len(synthetic_chunks),
+        "media_blocked_chunk_count": len(media_blocked_chunks),
         "pii_suspected_chunk_count": len(pii_chunks),
         "allowed_for_indexing_count": sum(1 for chunk in chunks if chunk.allowed_for_indexing),
     }

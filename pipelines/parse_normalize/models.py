@@ -38,6 +38,10 @@ class ParserCapability:
     preserves_bbox: bool
     preserves_table: bool
     fallback_used: bool
+    extracts_ocr: bool = False
+    extracts_transcript: bool = False
+    extracts_media_metadata: bool = False
+    extracts_keyframes: bool = False
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -60,6 +64,8 @@ class SourceDocument:
     product_line: str | None = None
     license_tag: str | None = None
     raw_available: bool = True
+    raw_path: Path | None = None
+    sidecars: dict[str, str] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
 
@@ -107,6 +113,9 @@ class DocumentChunk:
     content: str
     page_no: int | None
     bbox: list[float] | None
+    asset_type: str = "other"
+    parser_backend: str = "fallback"
+    parser_capability: dict = field(default_factory=dict)
     evidence_anchor_ids: list[str] = field(default_factory=list)
     anchor_count: int = 0
     quality_status: str = "warn"
@@ -138,6 +147,9 @@ class EvidenceAnchor:
     parser_capability: dict
     data_release_id: str
     created_at: str
+    start_ts: float | None = None
+    end_ts: float | None = None
+    metadata: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)

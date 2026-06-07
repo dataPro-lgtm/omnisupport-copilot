@@ -27,13 +27,13 @@
     "source_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "asset_type": {
       "type": "string",
-      "enum": ["pdf", "html", "faq", "release_notes", "api_doc", "community_post", "other"]
+      "enum": ["pdf", "html", "faq", "release_notes", "api_doc", "community_post", "image", "audio", "video", "other"]
     },
     "section_index": {"type": "integer", "minimum": 0},
     "section_path": {"type": "string", "minLength": 1},
     "section_type": {
       "type": "string",
-      "enum": ["text", "table", "image", "list", "title", "header"]
+      "enum": ["text", "table", "image", "list", "title", "header", "transcript"]
     },
     "content": {"type": "string", "minLength": 1},
     "page_no": {"type": ["integer", "null"], "minimum": 1},
@@ -49,7 +49,19 @@
       ]
     },
     "bbox_missing_reason": {"type": ["string", "null"]},
-    "parser_backend": {"type": "string", "enum": ["docling", "unstructured", "fallback"]},
+    "parser_backend": {
+      "type": "string",
+      "enum": [
+        "docling",
+        "unstructured",
+        "pypdf",
+        "tesseract_ocr",
+        "ocr_sidecar",
+        "audio_transcript_sidecar",
+        "video_ffmpeg_sidecar",
+        "fallback"
+      ]
+    },
     "parser_capability": {
       "type": "object",
       "required": ["preserves_page", "preserves_bbox", "preserves_table", "fallback_used"],
@@ -58,6 +70,10 @@
         "preserves_bbox": {"type": "boolean"},
         "preserves_table": {"type": "boolean"},
         "fallback_used": {"type": "boolean"},
+        "extracts_ocr": {"type": "boolean"},
+        "extracts_transcript": {"type": "boolean"},
+        "extracts_media_metadata": {"type": "boolean"},
+        "extracts_keyframes": {"type": "boolean"},
         "warnings": {"type": "array", "items": {"type": "string"}}
       },
       "additionalProperties": false

@@ -8,6 +8,14 @@ from urllib.parse import urlparse
 from pipelines.parse_normalize.models import SourceDocument, sha256_bytes, stable_id
 
 
+BINARY_ASSET_TYPES = {"pdf", "image", "audio", "video"}
+TEXT_SIDECAR_FIELDS = {
+    "transcript": ("transcript_object_path", "audio_track_transcript_path"),
+    "ocr_text": ("ocr_text_path", "image_ocr_path"),
+    "keyframe_ocr": ("keyframe_ocr_path",),
+}
+
+
 class _HTMLTextExtractor(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
@@ -35,7 +43,9 @@ def _path_from_uri(value: str) -> Path | None:
     return Path(value)
 
 
-def _decode_text(raw: bytes, asset_type: str) -> str:
+def _decode_text(raw: bytes, asset_type: str, *, raw_available: bool) -> str:
+    if raw_available and asset_type in BINARY_ASSET_TYPES:
+        return ""
     text = raw.decode("utf-8", errors="ignore")
     if asset_type in {"html", "faq", "release_notes", "api_doc", "community_post"}:
         parser = _HTMLTextExtractor()
@@ -43,6 +53,49 @@ def _decode_text(raw: bytes, asset_type: str) -> str:
         stripped = parser.text()
         return stripped or text
     return text
+
+
+def _read_sidecar_text(path_value: str | None) -> str | None:
+    if not path_value:
+        return None
+    path = _path_from_uri(path_value)
+    if path and path.exists():
+        return path.read_text(encoding="utf-8")
+    return None
+
+
+def _discover_adjacent_sidecar(candidate_path: Path | None, suffixes: tuple[str, ...]) -> str | None:
+    if not candidate_path:
+        return None
+    for suffix in suffixes:
+        path = candidate_path.with_suffix(candidate_path.suffix + suffix)
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+    return None
+
+
+def _load_sidecars(asset: dict, candidate_path: Path | None) -> dict[str, str]:
+    sidecars: dict[str, str] = {}
+    for sidecar_name, fields in TEXT_SIDECAR_FIELDS.items():
+        for field in fields:
+            text = _read_sidecar_text(asset.get(field))
+            if text is not None:
+                sidecars[sidecar_name] = text
+                break
+
+    sidecars.setdefault(
+        "transcript",
+        _discover_adjacent_sidecar(candidate_path, (".transcript.jsonl", ".transcript.txt", ".vtt")) or "",
+    )
+    sidecars.setdefault(
+        "ocr_text",
+        _discover_adjacent_sidecar(candidate_path, (".ocr.txt", ".ocr.md")) or "",
+    )
+    sidecars.setdefault(
+        "keyframe_ocr",
+        _discover_adjacent_sidecar(candidate_path, (".keyframe_ocr.txt", ".keyframes.txt")) or "",
+    )
+    return {key: value for key, value in sidecars.items() if value.strip()}
 
 
 def _synthetic_source_text(asset: dict, manifest: dict) -> str:
@@ -101,7 +154,7 @@ def _document_from_asset(
     if not raw_available and declared_checksum and source_fingerprint != declared_checksum:
         warnings.append("manifest_checksum_not_recomputed_from_raw")
 
-    raw_text = _decode_text(raw_bytes, asset_type)
+    raw_text = _decode_text(raw_bytes, asset_type, raw_available=raw_available)
     doc_id = stable_id("doc", source_id, doc_version)
     return SourceDocument(
         source_id=source_id,
@@ -118,6 +171,8 @@ def _document_from_asset(
         product_line=manifest.get("product_line"),
         license_tag=manifest.get("license_tag"),
         raw_available=raw_available,
+        raw_path=candidate_path if candidate_path and candidate_path.exists() else None,
+        sidecars=_load_sidecars(asset, candidate_path if candidate_path and candidate_path.exists() else None),
         warnings=warnings,
     )
 

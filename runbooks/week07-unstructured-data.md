@@ -14,6 +14,22 @@ This runbook validates the Student Core path:
 
 Week07 does not build embeddings, create vector indexes, call an LLM, or generate citations.
 
+## Real Multimodal Boundary
+
+Week07 now has two classroom paths:
+
+- `manifest_workspace_helpcenter_v1.json`: deterministic fallback path for teaching the control plane when raw S3 files are unavailable.
+- `manifest_week07_multimodal_v1.json`: real multimodal path for PDF, image OCR, audio transcript, and video keyframe/transcript parsing.
+
+The multimodal path processes real files under `data/week07_media/`:
+
+- `workspace_recovery_manual.pdf`
+- `workspace_recovery_evidence.png`
+- `support_call_recovery.wav`
+- `workspace_recovery_demo.mp4`
+
+Audio and video use transcript sidecars because enterprise ASR is often an upstream service. The raw media file and sidecar are governed together by the manifest, checksum, parser capability, and evidence anchors.
+
 ## Start Local Stack
 
 ```bash
@@ -65,6 +81,48 @@ Expected outputs:
 
 The default manifest points to placeholder S3 paths. In a local classroom checkout, this should produce deterministic fallback output and mark `source_path_missing_synthetic_fallback`. This is expected for dry-run teaching.
 
+## Generate / Refresh Real Multimodal Fixtures
+
+The repository ships generated fixtures. If you need to rebuild them after changing the fixture script, run:
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python scripts/week07/generate_multimodal_fixtures.py
+```
+
+This creates:
+
+- real PDF bytes with extractable text;
+- real PNG bytes for OCR;
+- real WAV audio bytes, using `espeak-ng` speech when available and a deterministic classroom WAV fallback otherwise;
+- real MP4 video bytes using the Python `imageio-ffmpeg` wheel, without requiring system-level `ffmpeg`;
+- transcript/OCR sidecars;
+- `data/seed_manifests/manifest_week07_multimodal_v1.json`.
+
+## Run Real PDF / Image / Audio / Video Parse
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.parse_normalize.run_parse \
+  --manifest-path data/seed_manifests/manifest_week07_multimodal_v1.json \
+  --parser auto \
+  --chunk-strategy section_aware_v1 \
+  --data-release-id week07-multimodal-local \
+  --dry-run \
+  --artifacts-dir artifacts/week07-multimodal \
+  --report-json reports/week07/parse_run_report_multimodal.json \
+  --quality-report-md reports/week07/chunk_quality_report_multimodal.md \
+  --week8-gate-json reports/week07/week8_ready_gate_multimodal.json
+```
+
+Expected:
+
+- `status=warn` or `status=success`, depending on whether OCR/parser warnings are emitted;
+- `week8_ready=True`;
+- `sections.json` includes `asset_type` values `pdf`, `image`, `audio`, and `video`;
+- `evidence_anchors.json` includes PDF `page`, image `object`, and media `timestamp` anchors;
+- no chunk is generated from raw binary garbage.
+
 ## Run With A Local File
 
 ```bash
@@ -94,7 +152,11 @@ Expected: fallback parser is still marked, but because the raw file is real, `we
 
 ```bash
 docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
-  pytest tests/integration/test_week07_parse_pipeline.py tests/integration/test_week07_quality_gate.py -v
+  pytest \
+  tests/integration/test_week07_parse_pipeline.py \
+  tests/integration/test_week07_quality_gate.py \
+  tests/integration/test_week07_multimodal_pipeline.py \
+  -v
 ```
 
 ## Validate Dagster Definitions
@@ -124,6 +186,9 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 | `source_fingerprint mismatch` | `--expected-fingerprint` does not match raw bytes | Recompute the fingerprint or point to the correct file. |
 | `missing_evidence_anchor` | Chunk generation ran without anchor generation | Use `run_parse.py`; do not call chunking alone for Week08 handoff. |
 | `week8_ready=false` | Synthetic fallback or blocking quality error | Fix raw source availability or quality gate error before indexing. |
+| `audio_transcript_sidecar_missing` | Audio file exists but no ASR transcript sidecar is available | Provide `.transcript.jsonl` or run an upstream ASR job before indexing. |
+| `image_ocr_text_empty` | Image exists but OCR produced no text | Improve OCR preprocessing or provide audited OCR sidecar. |
+| `video_no_transcript_or_keyframe_ocr` | Video has no transcript and no keyframe OCR | Provide transcript/keyframe sidecars or rerun video preprocessing. |
 | Dagster import error | Devbox image is stale after dependency changes | Rebuild devbox with Docker or Podman compose. |
 
 ## Handoff To Week08

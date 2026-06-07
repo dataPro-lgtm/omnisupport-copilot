@@ -10,6 +10,7 @@ ALTER TABLE knowledge_doc
     ADD COLUMN IF NOT EXISTS parsed_at TIMESTAMPTZ;
 
 ALTER TABLE knowledge_section
+    ADD COLUMN IF NOT EXISTS asset_type TEXT,
     ADD COLUMN IF NOT EXISTS source_fingerprint TEXT,
     ADD COLUMN IF NOT EXISTS parse_strategy_version TEXT,
     ADD COLUMN IF NOT EXISTS parser_backend TEXT,
@@ -28,6 +29,7 @@ ALTER TABLE evidence_anchor
     ADD COLUMN IF NOT EXISTS asset_type TEXT,
     ADD COLUMN IF NOT EXISTS anchor_type TEXT DEFAULT 'section',
     ADD COLUMN IF NOT EXISTS source_url_or_path TEXT,
+    ADD COLUMN IF NOT EXISTS bbox TEXT,
     ADD COLUMN IF NOT EXISTS bbox_missing_reason TEXT,
     ADD COLUMN IF NOT EXISTS parser_backend TEXT,
     ADD COLUMN IF NOT EXISTS parser_capability JSONB DEFAULT '{}'::jsonb,

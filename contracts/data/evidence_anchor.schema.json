@@ -30,9 +30,9 @@
     "source_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "asset_type": {
       "type": "string",
-      "enum": ["pdf", "html", "faq", "release_notes", "api_doc", "community_post", "other"]
+      "enum": ["pdf", "html", "faq", "release_notes", "api_doc", "community_post", "image", "audio", "video", "other"]
     },
-    "anchor_type": {"type": "string", "enum": ["page", "section", "object", "fallback"]},
+    "anchor_type": {"type": "string", "enum": ["page", "section", "object", "timestamp", "frame", "fallback"]},
     "source_url_or_path": {"type": "string", "minLength": 1},
     "section_path": {"type": "string", "minLength": 1},
     "doc_version": {"type": "string", "minLength": 1},
@@ -49,10 +49,25 @@
       ]
     },
     "bbox_missing_reason": {"type": ["string", "null"]},
-    "parser_backend": {"type": "string", "enum": ["docling", "unstructured", "fallback"]},
+    "parser_backend": {
+      "type": "string",
+      "enum": [
+        "docling",
+        "unstructured",
+        "pypdf",
+        "tesseract_ocr",
+        "ocr_sidecar",
+        "audio_transcript_sidecar",
+        "video_ffmpeg_sidecar",
+        "fallback"
+      ]
+    },
     "parser_capability": {"type": "object"},
     "data_release_id": {"type": "string", "minLength": 1},
-    "created_at": {"type": "string", "format": "date-time"}
+    "created_at": {"type": "string", "format": "date-time"},
+    "start_ts": {"type": ["number", "null"], "minimum": 0},
+    "end_ts": {"type": ["number", "null"], "minimum": 0},
+    "metadata": {"type": "object"}
   },
   "allOf": [
     {

@@ -26,6 +26,10 @@
     "source_id": {"type": "string", "minLength": 1},
     "section_id": {"type": "string", "pattern": "^section-[a-f0-9]{16,64}$"},
     "source_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "asset_type": {
+      "type": "string",
+      "enum": ["pdf", "html", "faq", "release_notes", "api_doc", "community_post", "image", "audio", "video", "other"]
+    },
     "chunk_index": {"type": "integer", "minimum": 0},
     "section_chunk_index": {"type": "integer", "minimum": 0},
     "chunk_strategy_version": {"type": "string", "minLength": 1},
@@ -46,6 +50,35 @@
         },
         {"type": "null"}
       ]
+    },
+    "parser_backend": {
+      "type": "string",
+      "enum": [
+        "docling",
+        "unstructured",
+        "pypdf",
+        "tesseract_ocr",
+        "ocr_sidecar",
+        "audio_transcript_sidecar",
+        "video_ffmpeg_sidecar",
+        "fallback"
+      ]
+    },
+    "parser_capability": {
+      "type": "object",
+      "required": ["preserves_page", "preserves_bbox", "preserves_table", "fallback_used"],
+      "properties": {
+        "preserves_page": {"type": "boolean"},
+        "preserves_bbox": {"type": "boolean"},
+        "preserves_table": {"type": "boolean"},
+        "fallback_used": {"type": "boolean"},
+        "extracts_ocr": {"type": "boolean"},
+        "extracts_transcript": {"type": "boolean"},
+        "extracts_media_metadata": {"type": "boolean"},
+        "extracts_keyframes": {"type": "boolean"},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
     },
     "evidence_anchor_ids": {
       "type": "array",

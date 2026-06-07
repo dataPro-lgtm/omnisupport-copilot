@@ -43,11 +43,12 @@ def chunk_sections(
     for section in sections:
         split_chunks = _split_text(section.content, chunk_size, overlap)
         for section_chunk_index, content in enumerate(split_chunks):
-            reason_codes = []
+            reason_codes = list(section.parser_capability.get("warnings") or [])
             if section.parser_capability.get("fallback_used"):
                 reason_codes.append("fallback_parser_used")
             if section.metadata.get("raw_available") is False:
                 reason_codes.append("source_path_missing_synthetic_fallback")
+            reason_codes = sorted(set(reason_codes))
             chunk_id = stable_id(
                 "chunk",
                 section.source_fingerprint,
@@ -62,6 +63,7 @@ def chunk_sections(
                     source_id=section.source_id,
                     section_id=section.section_id,
                     source_fingerprint=section.source_fingerprint,
+                    asset_type=section.asset_type,
                     chunk_index=global_index,
                     section_chunk_index=section_chunk_index,
                     chunk_strategy_version=chunk_strategy_version,
@@ -73,6 +75,8 @@ def chunk_sections(
                     content=content,
                     page_no=section.page_no,
                     bbox=section.bbox,
+                    parser_backend=section.parser_backend,
+                    parser_capability=section.parser_capability,
                     reason_codes=reason_codes,
                 )
             )

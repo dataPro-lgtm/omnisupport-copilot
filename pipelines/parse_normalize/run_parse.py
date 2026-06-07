@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import json
 from dataclasses import asdict
 from pathlib import Path
 
@@ -27,6 +28,10 @@ def _default_parse_run_id(data_release_id: str, manifest_id: str | None) -> str:
     return stable_id("parse-run", data_release_id, manifest_id or "local", length=16)
 
 
+def _jsonb(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
 async def _persist_to_db(
     *,
     documents: list[SourceDocument],
@@ -38,7 +43,6 @@ async def _persist_to_db(
 ) -> None:
     from pipelines.ingestion.db import acquire
 
-    document_by_id = {document.doc_id: document for document in documents}
     async with acquire() as conn:
         async with conn.transaction():
             for document in documents:
@@ -76,7 +80,7 @@ async def _persist_to_db(
                         source_url, source_fingerprint, license_tag, pii_level, quality_gate,
                         data_release_id, parse_strategy_version, parser_backend,
                         parser_capability, source_url_or_path, parse_run_id, parsed_at
-                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'none',$10,$11,$12,$13,$14,$15,$16,NOW())
+                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'none',$10,$11,$12,$13,$14::jsonb,$15,$16,NOW())
                     ON CONFLICT (doc_id) DO UPDATE SET
                         source_fingerprint = EXCLUDED.source_fingerprint,
                         data_release_id = EXCLUDED.data_release_id,
@@ -99,27 +103,29 @@ async def _persist_to_db(
                     parse_run.data_release_id,
                     parse_run.parse_strategy_version,
                     "fallback" if document.warnings else parse_run.parser,
-                    "{}",
+                    _jsonb({}),
                     document.source_url_or_path,
                     parse_run.parse_run_id,
                 )
 
             for chunk in chunks:
-                document = document_by_id.get(chunk["doc_id"])
                 await conn.execute(
                     """
                     INSERT INTO knowledge_section (
                         section_id, doc_id, source_id, section_path, section_type, content,
-                        page_no, bbox, chunk_index, data_release_id, chunk_strategy_version,
+                        asset_type, page_no, bbox, chunk_index, data_release_id, chunk_strategy_version,
                         source_fingerprint, parse_strategy_version, parser_backend,
                         parser_capability, bbox_missing_reason, evidence_anchor_ids,
                         anchor_count, quality_status, allowed_for_indexing, reason_codes
-                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18,$19,$20,$21,$22)
                     ON CONFLICT (section_id) DO UPDATE SET
                         content = EXCLUDED.content,
+                        asset_type = EXCLUDED.asset_type,
                         data_release_id = EXCLUDED.data_release_id,
                         chunk_strategy_version = EXCLUDED.chunk_strategy_version,
                         source_fingerprint = EXCLUDED.source_fingerprint,
+                        parser_backend = EXCLUDED.parser_backend,
+                        parser_capability = EXCLUDED.parser_capability,
                         evidence_anchor_ids = EXCLUDED.evidence_anchor_ids,
                         anchor_count = EXCLUDED.anchor_count,
                         quality_status = EXCLUDED.quality_status,
@@ -131,6 +137,7 @@ async def _persist_to_db(
                     chunk.get("section_path"),
                     chunk.get("section_type"),
                     chunk["content"],
+                    chunk["asset_type"],
                     chunk.get("page_no"),
                     None if chunk.get("bbox") is None else str(chunk.get("bbox")),
                     chunk["chunk_index"],
@@ -138,8 +145,8 @@ async def _persist_to_db(
                     chunk["chunk_strategy_version"],
                     chunk["source_fingerprint"],
                     chunk["parse_strategy_version"],
-                    "fallback" if document and document.warnings else parse_run.parser,
-                    "{}",
+                    chunk["parser_backend"],
+                    _jsonb(chunk["parser_capability"]),
                     None,
                     chunk["evidence_anchor_ids"],
                     chunk["anchor_count"],
@@ -149,18 +156,22 @@ async def _persist_to_db(
                 )
 
             for anchor in anchors:
+                modality = anchor["asset_type"]
+                if modality in {"pdf", "html", "faq", "release_notes", "api_doc", "community_post", "other"}:
+                    modality = "document"
                 await conn.execute(
                     """
                     INSERT INTO evidence_anchor (
                         anchor_id, chunk_id, section_id, doc_id, source_id, source_fingerprint,
                         asset_type, anchor_type, source_url, source_url_or_path, section_path,
                         doc_version, page_no, bbox, bbox_missing_reason, parser_backend,
-                        parser_capability, data_release_id, modality
-                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'document')
+                        parser_capability, data_release_id, modality, start_ts, end_ts, metadata
+                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb,$18,$19,$20,$21,$22::jsonb)
                     ON CONFLICT (anchor_id) DO UPDATE SET
                         source_fingerprint = EXCLUDED.source_fingerprint,
                         source_url_or_path = EXCLUDED.source_url_or_path,
-                        data_release_id = EXCLUDED.data_release_id
+                        data_release_id = EXCLUDED.data_release_id,
+                        metadata = EXCLUDED.metadata
                     """,
                     anchor["anchor_id"],
                     anchor["chunk_id"],
@@ -178,8 +189,12 @@ async def _persist_to_db(
                     None if anchor.get("bbox") is None else str(anchor.get("bbox")),
                     anchor.get("bbox_missing_reason"),
                     anchor["parser_backend"],
-                    "{}",
+                    _jsonb({}),
                     anchor["data_release_id"],
+                    modality,
+                    anchor.get("start_ts"),
+                    anchor.get("end_ts"),
+                    _jsonb(anchor.get("metadata", {})),
                 )
 
             await conn.execute(
@@ -189,7 +204,7 @@ async def _persist_to_db(
                     parse_strategy_version, data_release_id, started_at, finished_at,
                     source_count, section_count, chunk_count, anchor_count, quality_status,
                     week8_ready, warnings, errors, artifacts
-                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::text::timestamptz,$10::text::timestamptz,$11,$12,$13,$14,$15,$16,$17::jsonb,$18::jsonb,$19::jsonb)
                 ON CONFLICT (parse_run_id) DO UPDATE SET
                     status = EXCLUDED.status,
                     quality_status = EXCLUDED.quality_status,
@@ -214,9 +229,9 @@ async def _persist_to_db(
                 parse_run.anchor_count,
                 parse_run.quality_status,
                 parse_run.week8_ready,
-                parse_run.warnings,
-                parse_run.errors,
-                parse_run.artifacts,
+                _jsonb(parse_run.warnings),
+                _jsonb(parse_run.errors),
+                _jsonb(parse_run.artifacts),
             )
 
             for sample in quality_samples:
@@ -224,7 +239,7 @@ async def _persist_to_db(
                     """
                     INSERT INTO chunk_quality_sample (
                         sample_id, chunk_id, section_id, status, reason_codes, checks
-                    ) VALUES ($1,$2,$3,$4,$5,$6)
+                    ) VALUES ($1,$2,$3,$4,$5,$6::jsonb)
                     ON CONFLICT (sample_id) DO UPDATE SET
                         status = EXCLUDED.status,
                         reason_codes = EXCLUDED.reason_codes,
@@ -235,7 +250,7 @@ async def _persist_to_db(
                     sample["section_id"],
                     sample["status"],
                     sample["reason_codes"],
-                    sample["checks"],
+                    _jsonb(sample["checks"]),
                 )
 
 
@@ -348,7 +363,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--input-path", type=Path)
     parser.add_argument("--source-dir", type=Path, help="Reserved for instructor-scale raw-file mapping.")
     parser.add_argument("--content-type")
-    parser.add_argument("--parser", choices=["auto", "docling", "unstructured", "fallback"], default="auto")
+    parser.add_argument(
+        "--parser",
+        choices=["auto", "docling", "unstructured", "pypdf", "ocr", "media", "fallback"],
+        default="auto",
+    )
     parser.add_argument("--chunk-strategy", default=DEFAULT_CHUNK_STRATEGY_VERSION)
     parser.add_argument("--data-release-id", default="week07-dev-local")
     parser.add_argument("--parse-strategy-version", default=DEFAULT_PARSE_STRATEGY_VERSION)

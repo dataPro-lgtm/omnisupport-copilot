@@ -352,9 +352,22 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
     --quality-report-md reports/week07/chunk_quality_report.md \
     --week8-gate-json reports/week07/week8_ready_gate.json
 
+# 2b. 运行真实 PDF / 图片 OCR / 音频 / 视频多模态 dry-run
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.parse_normalize.run_parse \
+    --manifest-path data/seed_manifests/manifest_week07_multimodal_v1.json \
+    --parser auto \
+    --chunk-strategy section_aware_v1 \
+    --data-release-id week07-multimodal-local \
+    --dry-run \
+    --artifacts-dir artifacts/week07-multimodal \
+    --report-json reports/week07/parse_run_report_multimodal.json \
+    --quality-report-md reports/week07/chunk_quality_report_multimodal.md \
+    --week8-gate-json reports/week07/week8_ready_gate_multimodal.json
+
 # 3. 校验 parse pipeline 和 quality gate
 docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
-  pytest tests/integration/test_week07_parse_pipeline.py tests/integration/test_week07_quality_gate.py -v
+  pytest tests/integration/test_week07_parse_pipeline.py tests/integration/test_week07_quality_gate.py tests/integration/test_week07_multimodal_pipeline.py -v
 ```
 
 Week07 runbook: [runbooks/week07-unstructured-data.md](runbooks/week07-unstructured-data.md)
@@ -363,6 +376,7 @@ Week07 runbook: [runbooks/week07-unstructured-data.md](runbooks/week07-unstructu
 - Week07 不做 embedding、不建 pgvector index、不调用 LLM。
 - Citation 只能来自 `evidence_anchor`，不能由 LLM 编造。
 - 默认 manifest 指向课程占位 S3 路径，本地 dry-run 会明确标记 fallback；真实索引前需要提供 raw file 或对象存储读取。
+- `manifest_week07_multimodal_v1.json` 使用真实课程素材，覆盖 PDF、图片 OCR、音频 transcript、视频 keyframe/transcript。
 - Week08 只能消费 `allowed_for_indexing=true` 且有 evidence anchor 的 chunk。
 
 ---

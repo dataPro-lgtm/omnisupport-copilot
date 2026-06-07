@@ -19,6 +19,12 @@ def build_evidence_anchors(
         if section.asset_type == "pdf":
             anchor_type = "page" if section.page_no else "fallback"
             bbox_missing_reason = section.bbox_missing_reason or "parser_did_not_emit_bbox"
+        elif section.asset_type == "image":
+            anchor_type = "object"
+            bbox_missing_reason = section.bbox_missing_reason
+        elif section.asset_type in {"audio", "video"}:
+            anchor_type = "timestamp" if section.metadata.get("start_ts") is not None else "frame"
+            bbox_missing_reason = section.bbox_missing_reason
         elif section.parser_capability.get("fallback_used"):
             anchor_type = "fallback"
             bbox_missing_reason = section.bbox_missing_reason
@@ -52,6 +58,13 @@ def build_evidence_anchors(
             parser_capability=section.parser_capability,
             data_release_id=section.data_release_id,
             created_at=utc_now_iso(),
+            start_ts=section.metadata.get("start_ts", section.metadata.get("frame_ts")),
+            end_ts=section.metadata.get("end_ts", section.metadata.get("frame_ts")),
+            metadata={
+                key: value
+                for key, value in section.metadata.items()
+                if key in {"speaker", "frame_ts", "media", "ocr_source"}
+            },
         )
         chunk.evidence_anchor_ids = [anchor.anchor_id]
         chunk.anchor_count = 1

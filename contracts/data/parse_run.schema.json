@@ -28,7 +28,10 @@
     "status": {"type": "string", "enum": ["success", "warn", "failed"]},
     "manifest_id": {"type": ["string", "null"]},
     "batch_id": {"type": ["string", "null"]},
-    "parser": {"type": "string", "enum": ["auto", "docling", "unstructured", "fallback"]},
+    "parser": {
+      "type": "string",
+      "enum": ["auto", "docling", "unstructured", "pypdf", "ocr", "media", "fallback"]
+    },
     "chunk_strategy_version": {"type": "string", "minLength": 1},
     "parse_strategy_version": {"type": "string", "minLength": 1},
     "data_release_id": {"type": "string", "minLength": 1},
