@@ -32,6 +32,31 @@ def _jsonb(value: object) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+async def _ensure_week07_ppt_columns(conn) -> None:
+    """Keep existing local Postgres volumes compatible with new Week07 fields."""
+
+    await conn.execute(
+        """
+        ALTER TABLE knowledge_section
+            ADD COLUMN IF NOT EXISTS span_start INT,
+            ADD COLUMN IF NOT EXISTS span_end INT,
+            ADD COLUMN IF NOT EXISTS heading_path JSONB DEFAULT '[]'::jsonb,
+            ADD COLUMN IF NOT EXISTS context_prefix TEXT
+        """
+    )
+    await conn.execute(
+        """
+        ALTER TABLE evidence_anchor
+            ADD COLUMN IF NOT EXISTS span_start INT,
+            ADD COLUMN IF NOT EXISTS span_end INT,
+            ADD COLUMN IF NOT EXISTS heading_path JSONB DEFAULT '[]'::jsonb,
+            ADD COLUMN IF NOT EXISTS retrieval_method TEXT,
+            ADD COLUMN IF NOT EXISTS rerank_score DOUBLE PRECISION,
+            ADD COLUMN IF NOT EXISTS confidence DOUBLE PRECISION
+        """
+    )
+
+
 async def _persist_to_db(
     *,
     documents: list[SourceDocument],
@@ -43,7 +68,14 @@ async def _persist_to_db(
 ) -> None:
     from pipelines.ingestion.db import acquire
 
+    parser_by_doc: dict[str, str] = {}
+    capability_by_doc: dict[str, dict] = {}
+    for section in sections:
+        parser_by_doc.setdefault(section["doc_id"], section["parser_backend"])
+        capability_by_doc.setdefault(section["doc_id"], section.get("parser_capability", {}))
+
     async with acquire() as conn:
+        await _ensure_week07_ppt_columns(conn)
         async with conn.transaction():
             for document in documents:
                 product_line = document.product_line
@@ -102,8 +134,8 @@ async def _persist_to_db(
                     parse_run.quality_status,
                     parse_run.data_release_id,
                     parse_run.parse_strategy_version,
-                    "fallback" if document.warnings else parse_run.parser,
-                    _jsonb({}),
+                    parser_by_doc.get(document.doc_id, parse_run.parser),
+                    _jsonb(capability_by_doc.get(document.doc_id, {})),
                     document.source_url_or_path,
                     parse_run.parse_run_id,
                 )
@@ -116,8 +148,9 @@ async def _persist_to_db(
                         asset_type, page_no, bbox, chunk_index, data_release_id, chunk_strategy_version,
                         source_fingerprint, parse_strategy_version, parser_backend,
                         parser_capability, bbox_missing_reason, evidence_anchor_ids,
-                        anchor_count, quality_status, allowed_for_indexing, reason_codes
-                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18,$19,$20,$21,$22)
+                        anchor_count, quality_status, allowed_for_indexing, reason_codes,
+                        span_start, span_end, heading_path, context_prefix
+                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18,$19,$20,$21,$22,$23,$24,$25::jsonb,$26)
                     ON CONFLICT (section_id) DO UPDATE SET
                         content = EXCLUDED.content,
                         asset_type = EXCLUDED.asset_type,
@@ -129,7 +162,11 @@ async def _persist_to_db(
                         evidence_anchor_ids = EXCLUDED.evidence_anchor_ids,
                         anchor_count = EXCLUDED.anchor_count,
                         quality_status = EXCLUDED.quality_status,
-                        allowed_for_indexing = EXCLUDED.allowed_for_indexing
+                        allowed_for_indexing = EXCLUDED.allowed_for_indexing,
+                        span_start = EXCLUDED.span_start,
+                        span_end = EXCLUDED.span_end,
+                        heading_path = EXCLUDED.heading_path,
+                        context_prefix = EXCLUDED.context_prefix
                     """,
                     chunk["chunk_id"],
                     chunk["doc_id"],
@@ -153,6 +190,10 @@ async def _persist_to_db(
                     chunk["quality_status"],
                     chunk["allowed_for_indexing"],
                     chunk["reason_codes"],
+                    chunk.get("span_start"),
+                    chunk.get("span_end"),
+                    _jsonb(chunk.get("heading_path", [])),
+                    chunk.get("context_prefix"),
                 )
 
             for anchor in anchors:
@@ -165,13 +206,21 @@ async def _persist_to_db(
                         anchor_id, chunk_id, section_id, doc_id, source_id, source_fingerprint,
                         asset_type, anchor_type, source_url, source_url_or_path, section_path,
                         doc_version, page_no, bbox, bbox_missing_reason, parser_backend,
-                        parser_capability, data_release_id, modality, start_ts, end_ts, metadata
-                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb,$18,$19,$20,$21,$22::jsonb)
+                        parser_capability, data_release_id, modality, start_ts, end_ts, metadata,
+                        span_start, span_end, heading_path, retrieval_method, rerank_score, confidence
+                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb,$18,$19,$20,$21,$22::jsonb,$23,$24,$25::jsonb,$26,$27,$28)
                     ON CONFLICT (anchor_id) DO UPDATE SET
                         source_fingerprint = EXCLUDED.source_fingerprint,
                         source_url_or_path = EXCLUDED.source_url_or_path,
+                        parser_capability = EXCLUDED.parser_capability,
                         data_release_id = EXCLUDED.data_release_id,
-                        metadata = EXCLUDED.metadata
+                        metadata = EXCLUDED.metadata,
+                        span_start = EXCLUDED.span_start,
+                        span_end = EXCLUDED.span_end,
+                        heading_path = EXCLUDED.heading_path,
+                        retrieval_method = EXCLUDED.retrieval_method,
+                        rerank_score = EXCLUDED.rerank_score,
+                        confidence = EXCLUDED.confidence
                     """,
                     anchor["anchor_id"],
                     anchor["chunk_id"],
@@ -189,12 +238,18 @@ async def _persist_to_db(
                     None if anchor.get("bbox") is None else str(anchor.get("bbox")),
                     anchor.get("bbox_missing_reason"),
                     anchor["parser_backend"],
-                    _jsonb({}),
+                    _jsonb(anchor.get("parser_capability", {})),
                     anchor["data_release_id"],
                     modality,
                     anchor.get("start_ts"),
                     anchor.get("end_ts"),
                     _jsonb(anchor.get("metadata", {})),
+                    anchor.get("span_start"),
+                    anchor.get("span_end"),
+                    _jsonb(anchor.get("heading_path", [])),
+                    anchor.get("retrieval_method"),
+                    anchor.get("rerank_score"),
+                    anchor.get("confidence"),
                 )
 
             await conn.execute(
@@ -310,7 +365,12 @@ def run_parse_pipeline(
     write_json(Path(artifacts.quality_samples), gate.samples)
 
     status = "failed" if gate.errors else "warn" if gate.warnings else "success"
-    warnings = sorted(set(gate.warnings + [w for document in documents for w in document.warnings]))
+    parser_warnings = [
+        warning
+        for section in sections
+        for warning in section.parser_capability.get("warnings", [])
+    ]
+    warnings = sorted(set(gate.warnings + parser_warnings + [w for document in documents for w in document.warnings]))
     parse_run = ParseRunReport(
         parse_run_id=_default_parse_run_id(data_release_id, manifest.get("manifest_id")),
         status=status,
@@ -365,7 +425,18 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--content-type")
     parser.add_argument(
         "--parser",
-        choices=["auto", "docling", "unstructured", "pypdf", "ocr", "media", "fallback"],
+        choices=[
+            "auto",
+            "idp",
+            "marker",
+            "docling",
+            "unstructured",
+            "pypdf",
+            "pypdf_baseline",
+            "ocr",
+            "media",
+            "fallback",
+        ],
         default="auto",
     )
     parser.add_argument("--chunk-strategy", default=DEFAULT_CHUNK_STRATEGY_VERSION)

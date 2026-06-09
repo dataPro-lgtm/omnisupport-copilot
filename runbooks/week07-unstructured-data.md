@@ -14,6 +14,18 @@ This runbook validates the Student Core path:
 
 Week07 does not build embeddings, create vector indexes, call an LLM, or generate citations.
 
+## PPT Alignment Positioning
+
+The Week07 lesson deck uses the production vocabulary: Marker/Docling IDP, structure-aware chunking, late chunking, contextual retrieval, evidence anchors, quality reports, Whisper/pyannote, VLM/video, and CLIP-style multimodal retrieval. The repository maps those concepts to code paths without making heavy ML dependencies mandatory:
+
+- PDF `auto` is IDP-first: it tries `marker` then `docling`; when those optional packages are unavailable, it emits `pypdf_baseline`.
+- `--parser pypdf` remains available only as a teaching baseline, not the recommended production parser.
+- Structure-aware chunks carry `span_start`, `span_end`, `heading_path`, and `context_prefix`.
+- Evidence anchors carry source identity, page/timestamp/object location, span fields, parser capability, and release lineage.
+- Audio/video use real files plus transcript/keyframe sidecars in the classroom path; Whisper/pyannote/VLM/CLIP are optional production adapters.
+
+Reference map: `docs/blueprints/week07/ppt-alignment-roadmap.md`.
+
 ## Real Multimodal Boundary
 
 Week07 now has two classroom paths:
@@ -120,6 +132,7 @@ Expected:
 - `status=warn` or `status=success`, depending on whether OCR/parser warnings are emitted;
 - `week8_ready=True`;
 - `sections.json` includes `asset_type` values `pdf`, `image`, `audio`, and `video`;
+- PDF sections use `marker`, `docling`, or `pypdf_baseline`; the baseline is expected on machines without optional IDP packages;
 - `evidence_anchors.json` includes PDF `page`, image `object`, and media `timestamp` anchors;
 - no chunk is generated from raw binary garbage.
 
@@ -156,6 +169,7 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
   tests/integration/test_week07_parse_pipeline.py \
   tests/integration/test_week07_quality_gate.py \
   tests/integration/test_week07_multimodal_pipeline.py \
+  tests/integration/test_week07_ppt_alignment.py \
   -v
 ```
 
@@ -186,6 +200,7 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 | `source_fingerprint mismatch` | `--expected-fingerprint` does not match raw bytes | Recompute the fingerprint or point to the correct file. |
 | `missing_evidence_anchor` | Chunk generation ran without anchor generation | Use `run_parse.py`; do not call chunking alone for Week08 handoff. |
 | `week8_ready=false` | Synthetic fallback or blocking quality error | Fix raw source availability or quality gate error before indexing. |
+| PDF backend is `pypdf_baseline` | Marker/Docling optional packages are not installed in devbox | This is expected in classroom Docker/Podman runs; install production parser packages only for instructor-scale IDP demos. |
 | `audio_transcript_sidecar_missing` | Audio file exists but no ASR transcript sidecar is available | Provide `.transcript.jsonl` or run an upstream ASR job before indexing. |
 | `image_ocr_text_empty` | Image exists but OCR produced no text | Improve OCR preprocessing or provide audited OCR sidecar. |
 | `video_no_transcript_or_keyframe_ocr` | Video has no transcript and no keyframe OCR | Provide transcript/keyframe sidecars or rerun video preprocessing. |

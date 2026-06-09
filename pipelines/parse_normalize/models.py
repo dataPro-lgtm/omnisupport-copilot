@@ -38,6 +38,9 @@ class ParserCapability:
     preserves_bbox: bool
     preserves_table: bool
     fallback_used: bool
+    preserves_layout: bool = False
+    preserves_heading: bool = False
+    supports_ocr_fallback: bool = False
     extracts_ocr: bool = False
     extracts_transcript: bool = False
     extracts_media_metadata: bool = False
@@ -116,6 +119,10 @@ class DocumentChunk:
     asset_type: str = "other"
     parser_backend: str = "fallback"
     parser_capability: dict = field(default_factory=dict)
+    span_start: int | None = None
+    span_end: int | None = None
+    heading_path: list[str] = field(default_factory=list)
+    context_prefix: str | None = None
     evidence_anchor_ids: list[str] = field(default_factory=list)
     anchor_count: int = 0
     quality_status: str = "warn"
@@ -149,6 +156,12 @@ class EvidenceAnchor:
     created_at: str
     start_ts: float | None = None
     end_ts: float | None = None
+    span_start: int | None = None
+    span_end: int | None = None
+    heading_path: list[str] = field(default_factory=list)
+    retrieval_method: str | None = None
+    rerank_score: float | None = None
+    confidence: float | None = None
     metadata: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:

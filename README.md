@@ -232,7 +232,7 @@ omnisupport-copilot/
 | W04 | 🔄 | PyIceberg SQL Catalog、MinIO warehouse、Bronze/Silver 四表物化、snapshot/time travel/schema evolution |
 | W05 | 🔄 | dbt Core、support KPI mart、metric registry、受控 KPI 查询工具 |
 | W06 | 🔄 | 资产化编排、daily partitions、backfill dry-run、asset checks、run evidence |
-| W07 | 🔄 | 文档 parse/normalize、section-aware chunk、evidence anchor、Week08 ready gate |
+| W07 | 🔄 | IDP-first parse/normalize、structure-aware chunk、evidence anchor、quality gate、Week08 ready gate |
 | W08 | 🔄 | 混合检索、RAG API、citation contract、smoke eval |
 | W09-15 | 📅 | Tool层、评测、Tracing、GraphRAG、治理、Capstone |
 
@@ -332,7 +332,7 @@ Week06 runbook: [runbooks/week06-data-factory.md](runbooks/week06-data-factory.m
 
 ## Week07 Unstructured Data 最小闭环
 
-Week07 把文档资产从 manifest / raw file 推进到可检索、可审计、可交给 Week08 的 chunks 和 evidence anchors。默认仍然走 Docker/Podman `devbox`。
+Week07 把文档资产从 manifest / raw file 推进到可检索、可审计、可交给 Week08 的 chunks 和 evidence anchors。默认仍然走 Docker/Podman `devbox`。PDF `auto` 会优先尝试 Marker/Docling IDP；课堂环境没有这些可选依赖时，会显式降级为 `pypdf_baseline`。
 
 ```bash
 # 1. 校验 Week07 parse contracts
@@ -367,7 +367,7 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 
 # 3. 校验 parse pipeline 和 quality gate
 docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
-  pytest tests/integration/test_week07_parse_pipeline.py tests/integration/test_week07_quality_gate.py tests/integration/test_week07_multimodal_pipeline.py -v
+  pytest tests/integration/test_week07_parse_pipeline.py tests/integration/test_week07_quality_gate.py tests/integration/test_week07_multimodal_pipeline.py tests/integration/test_week07_ppt_alignment.py -v
 ```
 
 Week07 runbook: [runbooks/week07-unstructured-data.md](runbooks/week07-unstructured-data.md)
@@ -375,6 +375,7 @@ Week07 runbook: [runbooks/week07-unstructured-data.md](runbooks/week07-unstructu
 边界说明：
 - Week07 不做 embedding、不建 pgvector index、不调用 LLM。
 - Citation 只能来自 `evidence_anchor`，不能由 LLM 编造。
+- `--parser pypdf` 是教学 baseline；生产方向是 Marker/Docling IDP，可选适配入口见 `docs/blueprints/week07/ppt-alignment-roadmap.md`。
 - 默认 manifest 指向课程占位 S3 路径，本地 dry-run 会明确标记 fallback；真实索引前需要提供 raw file 或对象存储读取。
 - `manifest_week07_multimodal_v1.json` 使用真实课程素材，覆盖 PDF、图片 OCR、音频 transcript、视频 keyframe/transcript。
 - Week08 只能消费 `allowed_for_indexing=true` 且有 evidence anchor 的 chunk。
