@@ -60,10 +60,28 @@ def build_evidence_anchors(
             created_at=utc_now_iso(),
             start_ts=section.metadata.get("start_ts", section.metadata.get("frame_ts")),
             end_ts=section.metadata.get("end_ts", section.metadata.get("frame_ts")),
+            span_start=chunk.span_start,
+            span_end=chunk.span_end,
+            heading_path=chunk.heading_path,
+            retrieval_method=None,
+            rerank_score=None,
+            confidence=None,
             metadata={
                 key: value
-                for key, value in section.metadata.items()
-                if key in {"speaker", "frame_ts", "media", "ocr_source"}
+                for key, value in {
+                    **section.metadata,
+                    "context_prefix": chunk.context_prefix,
+                }.items()
+                if key
+                in {
+                    "speaker",
+                    "frame_ts",
+                    "media",
+                    "ocr_source",
+                    "context_prefix",
+                    "idp_route",
+                    "idp_warnings",
+                }
             },
         )
         chunk.evidence_anchor_ids = [anchor.anchor_id]

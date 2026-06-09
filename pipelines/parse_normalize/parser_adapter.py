@@ -9,6 +9,7 @@ import tempfile
 import wave
 import shutil
 
+from pipelines.parse.marker_pipeline import parse_pdf_with_idp
 from pipelines.parse_normalize.models import (
     DEFAULT_PARSE_STRATEGY_VERSION,
     ParsedSection,
@@ -20,6 +21,7 @@ from pipelines.parse_normalize.models import (
 
 SECTION_SPLIT_RE = re.compile(r"\n\s*\n+")
 TEXT_ASSET_TYPES = {"html", "faq", "release_notes", "api_doc", "community_post", "other"}
+IDP_PDF_BACKENDS = {"idp", "marker", "docling"}
 
 
 def _base_warning(document: SourceDocument, parser_name: str) -> list[str]:
@@ -36,20 +38,26 @@ def _capability(
     fallback_used: bool,
     warnings: list[str],
 ) -> ParserCapability:
-    if parser_name == "docling" and not fallback_used:
+    if parser_name in {"idp", "marker", "docling"} and not fallback_used:
         return ParserCapability(
             preserves_page=True,
             preserves_bbox=True,
             preserves_table=True,
             fallback_used=False,
+            preserves_layout=True,
+            preserves_heading=True,
+            supports_ocr_fallback=True,
             warnings=warnings,
         )
-    if parser_name == "pypdf" and not fallback_used:
+    if parser_name in {"pypdf", "pypdf_baseline"} and not fallback_used:
         return ParserCapability(
             preserves_page=True,
             preserves_bbox=False,
             preserves_table=False,
             fallback_used=False,
+            preserves_layout=False,
+            preserves_heading=False,
+            supports_ocr_fallback=False,
             extracts_media_metadata=False,
             warnings=warnings,
         )
@@ -59,6 +67,7 @@ def _capability(
             preserves_bbox=False,
             preserves_table=True,
             fallback_used=False,
+            preserves_heading=True,
             warnings=warnings,
         )
     if parser_name in {"tesseract_ocr", "ocr_sidecar"} and not fallback_used:
@@ -201,6 +210,8 @@ def _parse_with_pypdf(
     *,
     parse_strategy_version: str,
     warnings: list[str],
+    parser_backend: str = "pypdf",
+    fallback_used: bool = False,
 ) -> list[ParsedSection]:
     try:
         from pypdf import PdfReader
@@ -215,9 +226,9 @@ def _parse_with_pypdf(
 
     reader = PdfReader(BytesIO(document.raw_bytes))
     capability = _capability(
-        parser_name="pypdf",
+        parser_name=parser_backend,
         asset_type=document.asset_type,
-        fallback_used=False,
+        fallback_used=fallback_used,
         warnings=warnings,
     ).to_dict()
     sections: list[ParsedSection] = []
@@ -233,7 +244,7 @@ def _parse_with_pypdf(
                     section_path=section_path,
                     section_type=_section_type_for(paragraph, section_index),
                     content=paragraph,
-                    parser_backend="pypdf",
+                    parser_backend=parser_backend,
                     capability=capability,
                     parse_strategy_version=parse_strategy_version,
                     page_no=page_index,
@@ -245,6 +256,75 @@ def _parse_with_pypdf(
             section_index += 1
     if not sections:
         warnings.append("pdf_text_empty")
+    return sections
+
+
+def _parse_with_idp_pdf(
+    document: SourceDocument,
+    *,
+    parse_strategy_version: str,
+    warnings: list[str],
+    preferred: tuple[str, ...] = ("marker", "docling"),
+) -> list[ParsedSection]:
+    if not document.raw_path:
+        warnings.append("idp_requires_local_path_pypdf_baseline_used")
+        return _parse_with_pypdf(
+            document,
+            parse_strategy_version=parse_strategy_version,
+            warnings=warnings,
+            parser_backend="pypdf_baseline",
+            fallback_used=True,
+        )
+
+    idp_result = parse_pdf_with_idp(document.raw_path, preferred=preferred)
+    if idp_result is None:
+        warnings.append("idp_parser_unavailable_pypdf_baseline_used")
+        return _parse_with_pypdf(
+            document,
+            parse_strategy_version=parse_strategy_version,
+            warnings=warnings,
+            parser_backend="pypdf_baseline",
+            fallback_used=True,
+        )
+
+    capability = _capability(
+        parser_name=idp_result.parser_backend,
+        asset_type=document.asset_type,
+        fallback_used=False,
+        warnings=warnings,
+    ).to_dict()
+    sections: list[ParsedSection] = []
+    for index, block in enumerate(idp_result.blocks):
+        if not block.content.strip():
+            continue
+        sections.append(
+            _section(
+                document,
+                index=index,
+                section_path=block.section_path or f"page/{block.page_no or 1}/block/{index}",
+                section_type=block.section_type,
+                content=block.content,
+                parser_backend=idp_result.parser_backend,
+                capability=capability,
+                parse_strategy_version=parse_strategy_version,
+                page_no=block.page_no,
+                bbox=block.bbox,
+                bbox_missing_reason=None if block.bbox else "idp_block_bbox_missing",
+                metadata={
+                    "idp_route": idp_result.parser_backend,
+                    "idp_warnings": idp_result.warnings,
+                },
+            )
+        )
+    if not sections:
+        warnings.append("idp_text_empty_pypdf_baseline_used")
+        return _parse_with_pypdf(
+            document,
+            parse_strategy_version=parse_strategy_version,
+            warnings=warnings,
+            parser_backend="pypdf_baseline",
+            fallback_used=True,
+        )
     return sections
 
 
@@ -625,7 +705,7 @@ def parse_document(
     requested = parser
     if parser == "auto":
         if document.asset_type == "pdf":
-            requested = "pypdf"
+            requested = "idp"
         elif document.asset_type == "image":
             requested = "ocr"
         elif document.asset_type in {"audio", "video"}:
@@ -650,11 +730,30 @@ def parse_document(
             warnings=warnings,
         )
 
+    if requested in IDP_PDF_BACKENDS:
+        preferred = (requested,) if requested in {"marker", "docling"} else ("marker", "docling")
+        return _parse_with_idp_pdf(
+            document,
+            parse_strategy_version=parse_strategy_version,
+            warnings=warnings,
+            preferred=preferred,
+        )
+
     if requested == "pypdf":
         return _parse_with_pypdf(
             document,
             parse_strategy_version=parse_strategy_version,
             warnings=warnings,
+        )
+
+    if requested == "pypdf_baseline":
+        warnings.append("explicit_pypdf_baseline_used")
+        return _parse_with_pypdf(
+            document,
+            parse_strategy_version=parse_strategy_version,
+            warnings=warnings,
+            parser_backend="pypdf_baseline",
+            fallback_used=True,
         )
 
     if requested == "ocr":
@@ -678,25 +777,6 @@ def parse_document(
                 warnings=warnings,
             )
         raise ValueError(f"Media parser supports audio/video, got {document.asset_type}")
-
-    if requested == "docling":
-        try:
-            from docling.document_converter import DocumentConverter  # noqa: F401
-        except Exception:
-            warnings.append("docling_unavailable_fallback_used")
-            return _fallback_parse(
-                document,
-                parser_backend="fallback",
-                parse_strategy_version=parse_strategy_version,
-                warnings=warnings,
-            )
-        warnings.append("docling_adapter_minimal_fallback_used")
-        return _fallback_parse(
-            document,
-            parser_backend="fallback",
-            parse_strategy_version=parse_strategy_version,
-            warnings=warnings,
-        )
 
     raise ValueError(f"Unsupported parser: {parser}")
 

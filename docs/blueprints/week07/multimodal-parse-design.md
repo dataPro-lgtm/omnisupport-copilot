@@ -13,7 +13,7 @@ Week07 is the first real non-structured data engineering checkpoint. The goal is
 
 | Modality | Real input | Parser backend | Evidence unit | Week08 handoff |
 |---|---|---|---|---|
-| PDF | `.pdf` bytes | `pypdf` | page + paragraph | allowed when text exists and page anchor exists |
+| PDF | `.pdf` bytes | IDP-first: `marker` / `docling`; classroom fallback: `pypdf_baseline` | page + paragraph + span | allowed when text exists and page anchor exists |
 | Image | `.png` bytes | `tesseract_ocr` or `ocr_sidecar` | object OCR text | allowed when OCR text exists |
 | Audio | `.wav` bytes + transcript sidecar | `audio_transcript_sidecar` | utterance timestamp | allowed when transcript sidecar exists |
 | Video | `.mp4` bytes + transcript/keyframe OCR sidecar | `video_ffmpeg_sidecar` | transcript timestamp + keyframe | allowed when transcript or keyframe evidence exists |
@@ -37,4 +37,4 @@ The quality gate blocks or warns on:
 - video assets without transcript or keyframe OCR;
 - suspected PII.
 
-Fallback parser output is still useful for controlled demos, but it is not equivalent to real multimodal extraction.
+Fallback parser output is still useful for controlled demos, but it is not equivalent to real multimodal extraction. For PDFs, `pypdf_baseline` means the IDP parser was unavailable or explicitly bypassed; it should be taught as a baseline, not the production recommendation.

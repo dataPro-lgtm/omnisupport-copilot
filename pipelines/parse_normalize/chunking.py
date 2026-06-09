@@ -1,31 +1,13 @@
 """Section-aware chunking for Week07."""
 
+from pipelines.chunker.contextual import build_context_prefix
+from pipelines.chunker.structure_aware import split_section_text
 from pipelines.parse_normalize.models import (
     DEFAULT_CHUNK_STRATEGY_VERSION,
     DocumentChunk,
     ParsedSection,
     stable_id,
 )
-
-
-def _split_text(text: str, chunk_size: int, overlap: int) -> list[str]:
-    text = text.strip()
-    if not text:
-        return []
-    if len(text) <= chunk_size:
-        return [text]
-
-    chunks: list[str] = []
-    start = 0
-    while start < len(text):
-        end = min(len(text), start + chunk_size)
-        chunk = text[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
-        if end >= len(text):
-            break
-        start = max(end - overlap, start + 1)
-    return chunks
 
 
 def chunk_sections(
@@ -41,8 +23,14 @@ def chunk_sections(
     output: list[DocumentChunk] = []
     global_index = 0
     for section in sections:
-        split_chunks = _split_text(section.content, chunk_size, overlap)
-        for section_chunk_index, content in enumerate(split_chunks):
+        split_chunks = split_section_text(
+            section.content,
+            section_path=section.section_path,
+            section_type=section.section_type,
+            chunk_size=chunk_size,
+            overlap=overlap,
+        )
+        for section_chunk_index, chunk_slice in enumerate(split_chunks):
             reason_codes = list(section.parser_capability.get("warnings") or [])
             if section.parser_capability.get("fallback_used"):
                 reason_codes.append("fallback_parser_used")
@@ -55,6 +43,11 @@ def chunk_sections(
                 section.section_id,
                 section_chunk_index,
                 chunk_strategy_version,
+            )
+            context_prefix = build_context_prefix(
+                doc_title=section.metadata.get("title") or section.source_id,
+                section_path=section.section_path,
+                heading_path=chunk_slice.heading_path,
             )
             output.append(
                 DocumentChunk(
@@ -72,11 +65,15 @@ def chunk_sections(
                     doc_version=section.doc_version,
                     section_path=section.section_path,
                     section_type=section.section_type,
-                    content=content,
+                    content=chunk_slice.text,
                     page_no=section.page_no,
                     bbox=section.bbox,
                     parser_backend=section.parser_backend,
                     parser_capability=section.parser_capability,
+                    span_start=chunk_slice.span_start,
+                    span_end=chunk_slice.span_end,
+                    heading_path=chunk_slice.heading_path,
+                    context_prefix=context_prefix,
                     reason_codes=reason_codes,
                 )
             )

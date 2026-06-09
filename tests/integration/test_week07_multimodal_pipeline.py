@@ -35,7 +35,11 @@ def test_week07_multimodal_manifest_parses_real_media(tmp_path: Path):
     anchors = json.loads((tmp_path / "artifacts" / "evidence_anchors.json").read_text())
 
     assert {section["asset_type"] for section in sections} == {"pdf", "image", "audio", "video"}
-    assert "pypdf" in {section["parser_backend"] for section in sections}
+    assert any(
+        section["asset_type"] == "pdf"
+        and section["parser_backend"] in {"marker", "docling", "pypdf_baseline", "pypdf"}
+        for section in sections
+    )
     assert "audio_transcript_sidecar" in {section["parser_backend"] for section in sections}
     assert "video_ffmpeg_sidecar" in {section["parser_backend"] for section in sections}
     assert any(section["parser_backend"] in {"tesseract_ocr", "ocr_sidecar"} for section in sections)

@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import re
 
 from pipelines.parse_normalize.models import DocumentChunk, EvidenceAnchor, ParsedSection, stable_id
+from pipelines.quality.report import build_quality_report
 
 
 PII_RE = re.compile(
@@ -159,7 +160,7 @@ def evaluate_quality_gate(
         "allowed_for_indexing_count": sum(1 for chunk in chunks if chunk.allowed_for_indexing),
     }
 
-    return QualityGateResult(
+    result = QualityGateResult(
         quality_status=quality_status,
         week8_ready=week8_ready,
         metrics=metrics,
@@ -167,3 +168,14 @@ def evaluate_quality_gate(
         errors=sorted(set(errors)),
         samples=samples,
     )
+    quality_report = build_quality_report(result)
+    result.metrics.update(
+        {
+            "gate_decision": quality_report.gate_decision,
+            "completeness_score": quality_report.completeness_score,
+            "noise_score": quality_report.noise_score,
+            "evidence_score": quality_report.evidence_score,
+            "coherence_score": quality_report.coherence_score,
+        }
+    )
+    return result
