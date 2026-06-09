@@ -60,5 +60,6 @@
 ## 当前 repo 的现实约束
 
 - state 目前还是 JSON file，不是 DB state table
-- `ticket_ingest.py` / `doc_ingest.py` 还未自动更新 checkpoint
-- Week03 只要求“看得见、能测、可 dry-run 规划”
+- `ticket_ingest.py` 已在非 dry-run 且无 invalid/error 时自动更新 checkpoint
+- `doc_ingest.py` 暂未自动更新 checkpoint
+- Week03 支持 plan-first；真实 ticket 补数需要 `replay_backfill.py --execute --input`

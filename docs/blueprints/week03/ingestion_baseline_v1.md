@@ -33,13 +33,14 @@
 - `seed_loader.py` 仍然是 dry-run/admission gate，不直接做真实写入
 - `ticket_ingest.py` 和 manifest admission 仍是两段式
 - `doc_ingest.py` 真实 ingest 只覆盖 document 侧
-- replay/backfill 目前只有 planning，不是自动执行器
+- replay/backfill 默认只有 planning；显式 `--execute --input` 会调用 ticket ingest 执行补数
 
 ## 最小实现落点
 
 - 状态对象：`pipelines/ingestion/ingest_state.py`
 - 状态文件：`data/canonization/checkpoints/week03_ingest_state.json`
 - 恢复 dry-run：`pipelines/ingestion/replay_backfill.py`
+- raw Bronze 幂等键：`raw_ticket_event(source_id, source_fingerprint)`
 - 报告目录：`reports/week03/*.json`
 
 ## 验证方法

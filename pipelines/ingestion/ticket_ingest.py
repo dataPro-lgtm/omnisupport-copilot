@@ -22,6 +22,7 @@ from typing import AsyncIterator
 
 import jsonschema
 
+from pipelines.ingestion.ingest_state import DEFAULT_STATE_PATH, upsert_checkpoint
 from pipelines.ingestion.reporting import (
     recommend_recovery_action,
     summarize_status,
@@ -79,19 +80,53 @@ class TicketValidator:
 
 # ── 写入 DB ───────────────────────────────────────────────────────────────────
 
-async def upsert_ticket_bronze(conn, ticket: dict, batch_id: str):
-    """写入 raw_ticket_event Bronze 层"""
-    fingerprint = hashlib.sha256(
-        json.dumps(ticket, sort_keys=True).encode()
-    ).hexdigest()
+def ticket_source_fingerprint(ticket: dict) -> str:
+    """Stable raw-event fingerprint used for ingest idempotency."""
+
+    return hashlib.sha256(json.dumps(ticket, sort_keys=True).encode()).hexdigest()
+
+
+def _ticket_cursor(ticket: dict) -> str | None:
+    return ticket.get("updated_at") or ticket.get("created_at")
+
+
+async def ensure_ticket_bronze_idempotency(conn) -> None:
+    """Ensure existing local DB volumes have the raw ticket idempotency guard."""
 
     await conn.execute(
+        """
+        DELETE FROM raw_ticket_event older
+        USING raw_ticket_event newer
+        WHERE older.source_id = newer.source_id
+          AND older.source_fingerprint = newer.source_fingerprint
+          AND older.source_fingerprint IS NOT NULL
+          AND (
+              older.ingest_ts < newer.ingest_ts
+              OR (older.ingest_ts = newer.ingest_ts AND older.event_id < newer.event_id)
+          )
+        """
+    )
+    await conn.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_raw_ticket_event_source_fingerprint
+            ON raw_ticket_event (source_id, source_fingerprint)
+        """
+    )
+
+
+async def upsert_ticket_bronze(conn, ticket: dict, batch_id: str) -> bool:
+    """写入 raw_ticket_event Bronze 层，按 source fingerprint 保证重跑幂等。"""
+
+    fingerprint = ticket_source_fingerprint(ticket)
+
+    result = await conn.fetchrow(
         """
         INSERT INTO raw_ticket_event
             (source_id, manifest_id, ingest_batch_id, raw_payload,
              schema_version, license_tag, pii_level, source_fingerprint, ingest_ts)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        ON CONFLICT (event_id) DO NOTHING
+        ON CONFLICT (source_id, source_fingerprint) DO NOTHING
+        RETURNING event_id
         """,
         ticket.get("source_id", "unknown"),
         ticket.get("source_id", ""),          # manifest_id 近似
@@ -103,6 +138,7 @@ async def upsert_ticket_bronze(conn, ticket: dict, batch_id: str):
         fingerprint,
         datetime.now(timezone.utc),
     )
+    return result is not None
 
 
 async def upsert_ticket_silver(conn, ticket: dict, batch_id: str):
@@ -189,6 +225,7 @@ async def run_ingest(
     dry_run: bool = False,
     limit: int | None = None,
     report_path: Path | None = None,
+    state_path: Path | None = DEFAULT_STATE_PATH,
 ) -> dict:
     from pipelines.ingestion.db import acquire
 
@@ -196,11 +233,15 @@ async def run_ingest(
 
     stats = {
         "total": 0, "valid": 0, "invalid": 0,
-        "inserted": 0, "skipped": 0, "errors": 0,
+        "processed": 0, "inserted": 0, "skipped": 0, "errors": 0,
+        "bronze_inserted": 0, "bronze_duplicates": 0, "silver_upserted": 0,
         "batch_id": batch_id,
         "input": str(input_path),
         "dry_run": dry_run,
+        "state_path": str(state_path) if state_path else None,
+        "checkpoints_written": 0,
     }
+    source_cursors: dict[str, str] = {}
 
     if dry_run:
         async for ticket in iter_jsonl(input_path):
@@ -220,6 +261,7 @@ async def run_ingest(
             logger.debug(f"[dry-run] {ticket['ticket_id']}")
     else:
         async with acquire() as conn:
+            await ensure_ticket_bronze_idempotency(conn)
             async for ticket in iter_jsonl(input_path):
                 if limit and stats["total"] >= limit:
                     break
@@ -235,9 +277,20 @@ async def run_ingest(
 
                 try:
                     async with conn.transaction():
-                        await upsert_ticket_bronze(conn, ticket, batch_id)
+                        bronze_inserted = await upsert_ticket_bronze(conn, ticket, batch_id)
                         await upsert_ticket_silver(conn, ticket, batch_id)
-                    stats["inserted"] += 1
+                    stats["processed"] += 1
+                    stats["silver_upserted"] += 1
+                    if bronze_inserted:
+                        stats["inserted"] += 1
+                        stats["bronze_inserted"] += 1
+                    else:
+                        stats["skipped"] += 1
+                        stats["bronze_duplicates"] += 1
+                    source_id = ticket.get("source_id", "unknown")
+                    cursor = _ticket_cursor(ticket)
+                    if cursor and cursor > source_cursors.get(source_id, ""):
+                        source_cursors[source_id] = cursor
                 except Exception as e:
                     stats["errors"] += 1
                     logger.error(f"DB error for {ticket.get('ticket_id')}: {e}")
@@ -247,6 +300,21 @@ async def run_ingest(
                         f"Progress: {stats['total']} processed, "
                         f"{stats['inserted']} inserted, {stats['errors']} errors"
                     )
+
+            if state_path and stats["errors"] == 0 and stats["invalid"] == 0:
+                for source_id, cursor in source_cursors.items():
+                    upsert_checkpoint(
+                        source_id=source_id,
+                        last_processed_cursor=cursor,
+                        last_success_batch_id=batch_id,
+                        last_run_id=f"ticket-ingest::{batch_id}",
+                        state_path=state_path,
+                    )
+                    stats["checkpoints_written"] += 1
+            elif not state_path:
+                stats["checkpoint_skipped_reason"] = "state_path_disabled"
+            elif stats["errors"] or stats["invalid"]:
+                stats["checkpoint_skipped_reason"] = "ingest_not_clean"
 
     _log_summary(stats)
     _write_ticket_report(stats, report_path)
@@ -262,7 +330,9 @@ def _log_summary(stats: dict):
         f"  Total    : {stats['total']}\n"
         f"  Valid    : {stats['valid']}\n"
         f"  Invalid  : {stats['invalid']}\n"
-        f"  Inserted : {stats['inserted']}\n"
+        f"  Processed: {stats['processed']}\n"
+        f"  Bronze new: {stats['bronze_inserted']}\n"
+        f"  Duplicates: {stats['bronze_duplicates']}\n"
         f"  Errors   : {stats['errors']}\n"
         f"{'='*50}"
     )
@@ -281,9 +351,18 @@ def _write_ticket_report(stats: dict, report_path: Path | None):
             "total": stats["total"],
             "valid": stats["valid"],
             "invalid": stats["invalid"],
+            "processed": stats["processed"],
             "inserted": stats["inserted"],
             "skipped": stats["skipped"],
             "errors": stats["errors"],
+            "bronze_inserted": stats["bronze_inserted"],
+            "bronze_duplicates": stats["bronze_duplicates"],
+            "silver_upserted": stats["silver_upserted"],
+        },
+        "checkpoint": {
+            "state_path": stats.get("state_path"),
+            "checkpoints_written": stats.get("checkpoints_written", 0),
+            "skipped_reason": stats.get("checkpoint_skipped_reason"),
         },
         "status": summarize_status(errors=stats["errors"], invalid=stats["invalid"]),
         "recommended_action": recommend_recovery_action(
@@ -303,6 +382,8 @@ def main():
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--report-json", type=Path, default=None)
+    parser.add_argument("--state-path", type=Path, default=DEFAULT_STATE_PATH)
+    parser.add_argument("--no-checkpoint", action="store_true")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -312,7 +393,14 @@ def main():
         sys.exit(1)
 
     stats = asyncio.run(
-        run_ingest(args.input, args.batch_id, args.dry_run, args.limit, args.report_json)
+        run_ingest(
+            args.input,
+            args.batch_id,
+            args.dry_run,
+            args.limit,
+            args.report_json,
+            None if args.no_checkpoint else args.state_path,
+        )
     )
     sys.exit(1 if stats["errors"] > 0 else 0)
 

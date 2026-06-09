@@ -49,7 +49,7 @@ Dagster remains a thin orchestration view in Week04. The compose Dagster service
 
 | Table | Week04 write mode | Reason |
 |---|---|---|
-| `bronze.raw_ticket_event` | deduped full refresh | `event_id` is generated in PostgreSQL, so the source is deduped by `source_id + source_fingerprint` before writing. |
+| `bronze.raw_ticket_event` | deduped full refresh | Ingest already guards `source_id + source_fingerprint`; Week04 keeps the same dedupe rule for old duplicate rows and replay safety. |
 | `bronze.raw_doc_asset` | deterministic full refresh | `source_id` is already the stable asset key. |
 | `silver.ticket_fact` | deterministic full refresh | This is a current-state table and must not blind append. |
 | `silver.knowledge_doc` | deterministic full refresh | This is a current document state table and must not blind append. |
