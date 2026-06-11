@@ -17,5 +17,10 @@ where metric_name in (
     'p1_ticket_count',
     'sla_breach_count',
     'escalation_count',
-    'avg_backlog_age_days'
+    'avg_backlog_age_days',
+    'avg_first_response_minutes',
+    'avg_handle_time_minutes',
+    'first_resolution_rate',
+    'escalation_rate',
+    'sla_breach_rate'
 )

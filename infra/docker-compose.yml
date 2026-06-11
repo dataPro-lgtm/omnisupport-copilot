@@ -34,6 +34,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    ports:
+      - "${POSTGRES_HOST_PORT:-15432}:5432"
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. MinIO — 对象存储 (S3 兼容), raw zone 与中间制品落盘
@@ -156,7 +158,10 @@ services:
   # 6. Dagster — 资产化编排 (ingestion / parse / lakehouse / indexing)
   # ─────────────────────────────────────────────────────────────────────────────
   dagster:
-    image: dagster/dagster-k8s:latest
+    build:
+      context: ..
+      dockerfile: infra/dagster.Dockerfile
+    image: omnisupport-dagster:local
     container_name: omni_dagster
     restart: unless-stopped
     command: dagster dev -h 0.0.0.0 -p 3000 -m pipelines.definitions
@@ -204,6 +209,13 @@ services:
       WEEK06_OPERATOR: ${WEEK06_OPERATOR:-student-devbox}
       WEEK06_WEEK04_REPORT_PATH: ${WEEK06_WEEK04_REPORT_PATH:-reports/week04/materialization_report.json}
       WEEK06_WEEK05_RUN_RESULTS_PATH: ${WEEK06_WEEK05_RUN_RESULTS_PATH:-analytics/target/run_results.json}
+      WEEK07_MANIFEST_PATH: ${WEEK07_MANIFEST_PATH:-data/seed_manifests/manifest_workspace_helpcenter_v1.json}
+      WEEK07_DATA_RELEASE_ID: ${WEEK07_DATA_RELEASE_ID:-week07-dev-local}
+      WEEK07_ARTIFACTS_DIR: ${WEEK07_ARTIFACTS_DIR:-artifacts/week07}
+      WEEK07_REPORT_DIR: ${WEEK07_REPORT_DIR:-reports/week07}
+      WEEK07_PARSER: ${WEEK07_PARSER:-auto}
+      WEEK07_CHUNK_STRATEGY_VERSION: ${WEEK07_CHUNK_STRATEGY_VERSION:-section_aware_v1}
+      WEEK07_PARSE_DRY_RUN: ${WEEK07_PARSE_DRY_RUN:-true}
     ports:
       - "3000:3000"
     depends_on:
@@ -333,6 +345,13 @@ services:
       WEEK06_OPERATOR: ${WEEK06_OPERATOR:-student-devbox}
       WEEK06_WEEK04_REPORT_PATH: ${WEEK06_WEEK04_REPORT_PATH:-reports/week04/materialization_report.json}
       WEEK06_WEEK05_RUN_RESULTS_PATH: ${WEEK06_WEEK05_RUN_RESULTS_PATH:-analytics/target/run_results.json}
+      WEEK07_MANIFEST_PATH: ${WEEK07_MANIFEST_PATH:-data/seed_manifests/manifest_workspace_helpcenter_v1.json}
+      WEEK07_DATA_RELEASE_ID: ${WEEK07_DATA_RELEASE_ID:-week07-dev-local}
+      WEEK07_ARTIFACTS_DIR: ${WEEK07_ARTIFACTS_DIR:-artifacts/week07}
+      WEEK07_REPORT_DIR: ${WEEK07_REPORT_DIR:-reports/week07}
+      WEEK07_PARSER: ${WEEK07_PARSER:-auto}
+      WEEK07_CHUNK_STRATEGY_VERSION: ${WEEK07_CHUNK_STRATEGY_VERSION:-section_aware_v1}
+      WEEK07_PARSE_DRY_RUN: ${WEEK07_PARSE_DRY_RUN:-true}
     volumes:
       - ..:/workspace
     networks:

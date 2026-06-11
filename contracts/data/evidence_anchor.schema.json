@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "omni://contracts/data/evidence_anchor/v1",
+  "title": "EvidenceAnchor",
+  "description": "Week07 citation source record. Citations must come from this contract, not from LLM generation.",
+  "type": "object",
+  "required": [
+    "anchor_id",
+    "chunk_id",
+    "section_id",
+    "doc_id",
+    "source_id",
+    "source_fingerprint",
+    "asset_type",
+    "anchor_type",
+    "source_url_or_path",
+    "section_path",
+    "doc_version",
+    "parser_backend",
+    "parser_capability",
+    "data_release_id",
+    "created_at"
+  ],
+  "properties": {
+    "anchor_id": {"type": "string", "pattern": "^anchor-[a-f0-9]{16,64}$"},
+    "chunk_id": {"type": "string", "pattern": "^chunk-[a-f0-9]{16,64}$"},
+    "section_id": {"type": "string", "pattern": "^section-[a-f0-9]{16,64}$"},
+    "doc_id": {"type": "string", "minLength": 1},
+    "source_id": {"type": "string", "minLength": 1},
+    "source_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "asset_type": {
+      "type": "string",
+      "enum": ["pdf", "html", "faq", "release_notes", "api_doc", "community_post", "image", "audio", "video", "other"]
+    },
+    "anchor_type": {"type": "string", "enum": ["page", "section", "object", "timestamp", "frame", "fallback"]},
+    "source_url_or_path": {"type": "string", "minLength": 1},
+    "section_path": {"type": "string", "minLength": 1},
+    "doc_version": {"type": "string", "minLength": 1},
+    "page_no": {"type": ["integer", "null"], "minimum": 1},
+    "bbox": {
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {"type": "number"}
+        },
+        {"type": "null"}
+      ]
+    },
+    "bbox_missing_reason": {"type": ["string", "null"]},
+    "parser_backend": {
+      "type": "string",
+      "enum": [
+        "docling",
+        "idp",
+        "marker",
+        "llamaparse",
+        "mistral_ocr",
+        "unstructured",
+        "pypdf",
+        "pypdf_baseline",
+        "tesseract_ocr",
+        "ocr_sidecar",
+        "audio_transcript_sidecar",
+        "video_ffmpeg_sidecar",
+        "fallback"
+      ]
+    },
+    "parser_capability": {"type": "object"},
+    "data_release_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "start_ts": {"type": ["number", "null"], "minimum": 0},
+    "end_ts": {"type": ["number", "null"], "minimum": 0},
+    "span_start": {"type": ["integer", "null"], "minimum": 0},
+    "span_end": {"type": ["integer", "null"], "minimum": 0},
+    "heading_path": {"type": "array", "items": {"type": "string"}},
+    "retrieval_method": {"type": ["string", "null"]},
+    "rerank_score": {"type": ["number", "null"]},
+    "confidence": {"type": ["number", "null"]},
+    "metadata": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"asset_type": {"const": "pdf"}},
+        "required": ["asset_type"]
+      },
+      "then": {"required": ["page_no", "bbox"]}
+    },
+    {
+      "if": {
+        "properties": {
+          "asset_type": {"const": "pdf"},
+          "bbox": {"type": "null"}
+        },
+        "required": ["asset_type", "bbox"]
+      },
+      "then": {"required": ["bbox_missing_reason"]}
+    }
+  ],
+  "additionalProperties": false
+}

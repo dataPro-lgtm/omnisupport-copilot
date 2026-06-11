@@ -16,11 +16,24 @@ class MetricDefinition:
     name: str
     aggregation: str
     allowed_roles: frozenset[str]
+    business_name_zh: str
+    business_definition_zh: str
+    owner: str
+    metric_type: str
+    formula: str
+    unit: str
+    sensitivity: str
+    definition_status: str
+    version: str
+    quality_tests: tuple[str, ...]
+    numerator: str | None = None
+    denominator: str | None = None
 
 
 @dataclass(frozen=True)
 class MetricRegistry:
     registry_id: str
+    registry_version: str
     source_model: str
     safe_view: str
     time_dimension: str
@@ -48,12 +61,25 @@ def load_metric_registry(path: str | Path | None = None) -> MetricRegistry:
             name=item["name"],
             aggregation=item["aggregation"],
             allowed_roles=frozenset(item.get("allowed_roles", [])),
+            business_name_zh=item.get("business_name_zh", ""),
+            business_definition_zh=item.get("business_definition_zh", ""),
+            owner=item.get("owner", ""),
+            metric_type=item.get("metric_type", ""),
+            formula=item.get("formula", ""),
+            unit=item.get("unit", ""),
+            sensitivity=item.get("sensitivity", ""),
+            definition_status=item.get("definition_status", "production"),
+            version=str(item.get("version", "")),
+            quality_tests=tuple(item.get("quality_tests", [])),
+            numerator=item.get("numerator"),
+            denominator=item.get("denominator"),
         )
         for item in data.get("metrics", [])
     }
 
     return MetricRegistry(
         registry_id=data["registry_id"],
+        registry_version=str(data.get("registry_version", data.get("version", ""))),
         source_model=data["source_model"],
         safe_view=data["safe_view"],
         time_dimension=data["time_dimension"],
@@ -69,6 +95,7 @@ def load_metric_registry(path: str | Path | None = None) -> MetricRegistry:
 def registry_to_dict(registry: MetricRegistry) -> dict[str, Any]:
     return {
         "registry_id": registry.registry_id,
+        "registry_version": registry.registry_version,
         "source_model": registry.source_model,
         "safe_view": registry.safe_view,
         "time_dimension": registry.time_dimension,
@@ -77,5 +104,15 @@ def registry_to_dict(registry: MetricRegistry) -> dict[str, Any]:
         "allowed_dimensions": sorted(registry.allowed_dimensions),
         "allowed_filters": sorted(registry.allowed_filters),
         "allowed_roles": sorted(registry.allowed_roles),
-        "metrics": sorted(registry.metrics),
+        "metrics": {
+            name: {
+                "aggregation": metric.aggregation,
+                "metric_type": metric.metric_type,
+                "unit": metric.unit,
+                "sensitivity": metric.sensitivity,
+                "definition_status": metric.definition_status,
+                "allowed_roles": sorted(metric.allowed_roles),
+            }
+            for name, metric in sorted(registry.metrics.items())
+        },
     }

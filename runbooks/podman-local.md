@@ -21,6 +21,7 @@ Project compose features that need validation on Podman:
 | `healthcheck` | PostgreSQL, MinIO, APIs | Medium with older providers |
 | `depends_on.condition` | health-gated service startup | Medium with older providers |
 | `profiles` | `devbox` tools path | Medium with older providers |
+| Host port mapping | APIs, MinIO, Dagster, Phoenix, PostgreSQL `15432` | Low if ports are free |
 | Fixed `container_name` | all major services | Medium if stale Podman containers exist |
 | `restart: unless-stopped` | long-running services | Low for class labs; restart-on-boot is not required |
 
@@ -137,6 +138,19 @@ docker compose --env-file infra/env/.env.local -f infra/docker-compose.yml down
 ```
 
 This does not remove Docker volumes unless `-v` is added.
+
+PostgreSQL is mapped to host port `15432` by default for DataGrip / DBeaver:
+
+```text
+Host: localhost
+Port: 15432
+Database: omnisupport
+User: omni
+Password: omnipass
+```
+
+Set `POSTGRES_HOST_PORT=5432` in `infra/env/.env.local` only when the host
+machine has no local PostgreSQL conflict.
 
 Start the stateful Week01 base:
 

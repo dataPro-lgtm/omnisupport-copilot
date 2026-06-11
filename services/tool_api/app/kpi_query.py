@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -39,6 +41,7 @@ SAFE_COLUMNS = {
     "data_release_id",
     "generated_at",
 }
+BASE_POLICIES = ["tool_contract", "metric_registry", "safe_view", "parameterized_sql"]
 
 
 def _load_input_schema() -> dict[str, Any]:
@@ -68,23 +71,57 @@ def _json_safe(value: Any) -> Any:
     return value
 
 
+def _query_fingerprint(payload: dict[str, Any]) -> str:
+    stable = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(stable.encode("utf-8")).hexdigest()[:16]
+
+
+def _data_freshness(rows: list[dict[str, Any]], registry: MetricRegistry | None) -> dict[str, Any]:
+    generated_values = [
+        row.get("generated_at")
+        for row in rows
+        if row.get("generated_at") is not None
+    ]
+    release_values = [
+        row.get("data_release_id")
+        for row in rows
+        if row.get("data_release_id") is not None
+    ]
+    return {
+        "generated_at_max": max(generated_values) if generated_values else None,
+        "release_id": release_values[0] if release_values else settings.release_id,
+        "registry_id": registry.registry_id if registry else "unloaded",
+        "registry_version": registry.registry_version if registry else None,
+    }
+
+
 def _audit(
     payload: dict[str, Any],
     registry: MetricRegistry | None,
     row_count: int = 0,
+    *,
+    policy_applied: list[str] | None = None,
 ) -> dict[str, Any]:
     return {
+        "audit_id": str(uuid.uuid4()),
         "tool_name": "query_support_kpis_v1",
         "registry_id": registry.registry_id if registry else "unloaded",
+        "registry_version": registry.registry_version if registry else None,
         "actor_role": payload.get("actor_role"),
         "actor_id": payload.get("actor_id"),
+        "trace_id": payload.get("trace_id"),
+        "purpose": payload.get("purpose", "classroom_demo"),
         "metrics": payload.get("metrics", []),
         "dimensions": payload.get("dimensions", []),
         "filters": payload.get("filters", {}),
+        "actor_org_ids": payload.get("actor_org_ids", []),
         "date_from": payload.get("date_from"),
         "date_to": payload.get("date_to"),
         "row_count": row_count,
         "release_id": settings.release_id,
+        "safe_view": registry.safe_view if registry else None,
+        "query_fingerprint": _query_fingerprint(payload),
+        "policy_applied": policy_applied or [],
     }
 
 
@@ -93,13 +130,22 @@ def _deny(
     message: str,
     payload: dict[str, Any],
     registry: MetricRegistry | None = None,
+    *,
+    policy_applied: list[str] | None = None,
+    status: str = "denied",
 ) -> dict[str, Any]:
+    audit = _audit(payload, registry, policy_applied=policy_applied or [])
     return {
         "allowed": False,
+        "status": status,
         "rows": [],
         "denial_code": code,
         "message": message,
-        "audit": _audit(payload, registry),
+        "audit_id": audit["audit_id"],
+        "trace_id": audit["trace_id"],
+        "policy_applied": audit["policy_applied"],
+        "data_freshness": _data_freshness([], registry),
+        "audit": audit,
     }
 
 
@@ -111,11 +157,17 @@ def _validate_request(payload: dict[str, Any], registry: MetricRegistry) -> dict
             format_checker=jsonschema.FormatChecker(),
         )
     except jsonschema.ValidationError as exc:
-        return _deny("SCHEMA_VALIDATION_FAILED", exc.message, payload, registry)
+        return _deny("SCHEMA_VALIDATION_FAILED", exc.message, payload, registry, policy_applied=["tool_contract"])
 
     actor_role = payload["actor_role"]
     if actor_role not in registry.allowed_roles:
-        return _deny("ROLE_DENIED", f"role is not allowed: {actor_role}", payload, registry)
+        return _deny(
+            "ROLE_DENIED",
+            f"role is not allowed: {actor_role}",
+            payload,
+            registry,
+            policy_applied=["tool_contract", "metric_registry", "role_policy"],
+        )
 
     requested_metrics = payload["metrics"]
     denied_metrics = [
@@ -129,6 +181,24 @@ def _validate_request(payload: dict[str, Any], registry: MetricRegistry) -> dict
             f"metrics are not registered or not role-allowed: {', '.join(denied_metrics)}",
             payload,
             registry,
+            policy_applied=["tool_contract", "metric_registry"],
+        )
+
+    experimental_metrics = [
+        name
+        for name in requested_metrics
+        if registry.metrics[name].definition_status == "experimental_proxy"
+    ]
+    if experimental_metrics and not payload.get("include_experimental_metrics", False):
+        return _deny(
+            "EXPERIMENTAL_METRIC_NOT_ACKNOWLEDGED",
+            (
+                "experimental_proxy metrics require include_experimental_metrics=true: "
+                + ", ".join(experimental_metrics)
+            ),
+            payload,
+            registry,
+            policy_applied=["tool_contract", "metric_registry", "experimental_metric_guard"],
         )
 
     dimensions = payload.get("dimensions", [])
@@ -139,6 +209,7 @@ def _validate_request(payload: dict[str, Any], registry: MetricRegistry) -> dict
             f"dimensions are not safe: {', '.join(denied_dimensions)}",
             payload,
             registry,
+            policy_applied=["tool_contract", "metric_registry", "dimension_policy"],
         )
 
     filters = payload.get("filters", {})
@@ -149,18 +220,35 @@ def _validate_request(payload: dict[str, Any], registry: MetricRegistry) -> dict
             f"filters are not safe: {', '.join(denied_filters)}",
             payload,
             registry,
+            policy_applied=["tool_contract", "metric_registry", "filter_policy"],
+        )
+
+    if actor_role == "support_ops" and not payload.get("actor_org_ids"):
+        return _deny(
+            "ORG_SCOPE_REQUIRED",
+            "support_ops queries must include actor_org_ids in classroom v1.1 policy",
+            payload,
+            registry,
+            policy_applied=["tool_contract", "metric_registry", "org_scope_required"],
         )
 
     date_from = _parse_date(payload["date_from"])
     date_to = _parse_date(payload["date_to"])
     if date_to < date_from:
-        return _deny("SCHEMA_VALIDATION_FAILED", "date_to must be on or after date_from", payload, registry)
+        return _deny(
+            "SCHEMA_VALIDATION_FAILED",
+            "date_to must be on or after date_from",
+            payload,
+            registry,
+            policy_applied=["tool_contract"],
+        )
     if (date_to - date_from).days > registry.max_window_days:
         return _deny(
             "WINDOW_TOO_LARGE",
             f"date window exceeds {registry.max_window_days} days",
             payload,
             registry,
+            policy_applied=["tool_contract", "metric_registry", "window_policy"],
         )
 
     return None
@@ -168,7 +256,14 @@ def _validate_request(payload: dict[str, Any], registry: MetricRegistry) -> dict
 
 def _build_query(payload: dict[str, Any], registry: MetricRegistry) -> tuple[str, list[Any]]:
     selected_dimensions = payload.get("dimensions", [])
-    output_columns = ["metric_date", "metric_name", *selected_dimensions, "metric_value", "data_release_id"]
+    output_columns = [
+        "metric_date",
+        "metric_name",
+        *selected_dimensions,
+        "metric_value",
+        "data_release_id",
+        "generated_at",
+    ]
     invalid_columns = [column for column in output_columns if column not in SAFE_COLUMNS]
     if invalid_columns:
         raise ValueError(f"unsafe output columns: {', '.join(invalid_columns)}")
@@ -181,11 +276,14 @@ def _build_query(payload: dict[str, Any], registry: MetricRegistry) -> tuple[str
     for field, value in payload.get("filters", {}).items():
         params.append([str(item) for item in value] if isinstance(value, list) else [str(value)])
         where.append(f"{field} = any(${len(params)}::text[])")
+    if payload.get("actor_role") != "admin" and payload.get("actor_org_ids"):
+        params.append([str(item) for item in payload["actor_org_ids"]])
+        where.append(f"org_id = any(${len(params)}::text[])")
 
     params.append(int(payload.get("limit", 100)))
     columns_sql = ", ".join(output_columns)
     where_sql = " and ".join(where)
-    order_sql = ", ".join(output_columns[:-2])
+    order_sql = ", ".join(["metric_date", "metric_name", *selected_dimensions])
 
     query = f"""
         select {columns_sql}
@@ -216,15 +314,33 @@ async def query_support_kpis(
         finally:
             await connection.close()
     except Exception as exc:
-        return _deny("DB_UNAVAILABLE", str(exc), payload, registry)
+        return _deny(
+            "DB_UNAVAILABLE",
+            str(exc),
+            payload,
+            registry,
+            policy_applied=BASE_POLICIES,
+            status="error",
+        )
 
     rows = [{key: _json_safe(value) for key, value in record.items()} for record in records]
+    policy_applied = list(BASE_POLICIES)
+    if payload.get("actor_role") != "admin" and payload.get("actor_org_ids"):
+        policy_applied.append("org_scope_filter")
+    if any(registry.metrics[name].definition_status == "experimental_proxy" for name in payload["metrics"]):
+        policy_applied.append("experimental_metric_ack")
+    audit = _audit(payload, registry, row_count=len(rows), policy_applied=policy_applied)
     return {
         "allowed": True,
+        "status": "ok",
         "rows": rows,
         "denial_code": None,
         "message": None,
-        "audit": _audit(payload, registry, row_count=len(rows)),
+        "audit_id": audit["audit_id"],
+        "trace_id": audit["trace_id"],
+        "policy_applied": audit["policy_applied"],
+        "data_freshness": _data_freshness(rows, registry),
+        "audit": audit,
     }
 
 
@@ -232,6 +348,8 @@ EXAMPLES: dict[str, dict[str, Any]] = {
     "valid": {
         "actor_role": "instructor",
         "actor_id": "local-demo",
+        "trace_id": "trace-week05-local-demo",
+        "purpose": "classroom_demo",
         "metrics": ["ticket_count", "open_ticket_count"],
         "date_from": "2026-04-01",
         "date_to": "2026-04-30",
@@ -250,6 +368,18 @@ EXAMPLES: dict[str, dict[str, Any]] = {
         "metrics": ["raw_sql_revenue"],
         "date_from": "2026-01-01",
         "date_to": "2026-01-31",
+    },
+    "bad_experimental": {
+        "actor_role": "instructor",
+        "metrics": ["first_resolution_rate"],
+        "date_from": "2026-04-01",
+        "date_to": "2026-04-30",
+    },
+    "bad_org_scope": {
+        "actor_role": "support_ops",
+        "metrics": ["ticket_count"],
+        "date_from": "2026-04-01",
+        "date_to": "2026-04-30",
     },
 }
 

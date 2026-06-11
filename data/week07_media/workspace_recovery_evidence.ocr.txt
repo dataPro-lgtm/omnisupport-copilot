@@ -1,0 +1,4 @@
+Week07 OCR Evidence Card
+Recover workspace only after identity check.
+Citations must point to source evidence.
+Release lineage: week07-multimodal-demo.

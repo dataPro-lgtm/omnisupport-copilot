@@ -12,7 +12,7 @@
 - `ANTHROPIC_API_KEY` 可选（Week01 留空可先验证工程基线）
 
 > Week01 推荐走 **Docker-only** 路线：不要求学员本地先配置 Python 依赖。
-> 默认 compose 不把 PostgreSQL 暴露到宿主机，避免与本机数据库冲突。
+> PostgreSQL 默认映射到宿主机 `15432`，便于 DataGrip / DBeaver 访问，同时避免与本机 PostgreSQL 的 `5432` 冲突。
 
 ---
 
@@ -63,6 +63,18 @@ curl -s http://localhost:8001/health
 # Phoenix (AI 可观测)
 # http://localhost:6006
 ```
+
+DataGrip / DBeaver 连接 PostgreSQL：
+
+```text
+Host: localhost
+Port: 15432
+Database: omnisupport
+User: omni
+Password: omnipass
+```
+
+如需改成宿主机 `5432`，在 `infra/env/.env.local` 中设置 `POSTGRES_HOST_PORT=5432` 后重启 `postgres` 服务。
 
 ---
 

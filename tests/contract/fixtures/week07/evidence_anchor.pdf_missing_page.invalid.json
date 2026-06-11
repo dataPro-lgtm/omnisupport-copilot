@@ -1,0 +1,19 @@
+{
+  "anchor_id": "anchor-0123456789abcdef",
+  "chunk_id": "chunk-0123456789abcdef",
+  "section_id": "section-0123456789abcdef",
+  "doc_id": "doc-edge-gateway-pdf-001",
+  "source_id": "doc:edge_gateway:000000000001",
+  "source_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "asset_type": "pdf",
+  "anchor_type": "page",
+  "source_url_or_path": "s3://omni-raw-documents/edge-gateway/manual.pdf",
+  "section_path": "Firmware Recovery",
+  "doc_version": "manifest-edge-gateway-pdf-20260331-001",
+  "bbox": null,
+  "bbox_missing_reason": "parser_did_not_emit_bbox",
+  "parser_backend": "fallback",
+  "parser_capability": {"fallback_used": true},
+  "data_release_id": "week07-dev-local",
+  "created_at": "2026-04-24T00:00:00+00:00"
+}

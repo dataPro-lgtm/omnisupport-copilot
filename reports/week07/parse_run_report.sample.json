@@ -1,0 +1,29 @@
+{
+  "parse_run_id": "parse-run-week07-sample",
+  "status": "warn",
+  "manifest_id": "manifest-workspace-helpcenter-20260331-001",
+  "batch_id": "batch-20260331-001",
+  "parser": "auto",
+  "chunk_strategy_version": "section_aware_v1",
+  "parse_strategy_version": "parse_normalize_v1",
+  "data_release_id": "week07-dev-local",
+  "started_at": "2026-04-24T00:00:00+00:00",
+  "finished_at": "2026-04-24T00:00:01+00:00",
+  "source_count": 4,
+  "section_count": 4,
+  "chunk_count": 4,
+  "anchor_count": 4,
+  "quality_status": "warn",
+  "week8_ready": false,
+  "warnings": [
+    "fallback_parser_used",
+    "source_path_missing_synthetic_fallback"
+  ],
+  "errors": [],
+  "artifacts": {
+    "sections": "artifacts/week07/sections.json",
+    "chunks": "artifacts/week07/chunks.json",
+    "evidence_anchors": "artifacts/week07/evidence_anchors.json",
+    "quality_samples": "artifacts/week07/chunk_quality_samples.json"
+  }
+}

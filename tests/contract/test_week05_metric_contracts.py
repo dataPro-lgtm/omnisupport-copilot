@@ -14,9 +14,17 @@ def test_query_support_kpis_contract_matches_tool_schema():
 
     jsonschema.validate(tool, schema)
     assert tool["name"] == "query_support_kpis_v1"
+    assert tool["version"] == "v1.1"
     assert tool["idempotent"] is True
     assert "METRIC_DENIED" in tool["failure_codes"]
+    assert "ORG_SCOPE_REQUIRED" in tool["failure_codes"]
+    assert "EXPERIMENTAL_METRIC_NOT_ACKNOWLEDGED" in tool["failure_codes"]
     assert "raw_sql" not in tool["input_schema"]["properties"]
+    assert "trace_id" in tool["input_schema"]["properties"]
+    assert "purpose" in tool["input_schema"]["properties"]
+    assert "actor_org_ids" in tool["input_schema"]["properties"]
+    assert "audit_id" in tool["output_schema"]["properties"]
+    assert "policy_applied" in tool["output_schema"]["properties"]
 
 
 def test_query_support_kpis_contract_rejects_extra_raw_sql_field():

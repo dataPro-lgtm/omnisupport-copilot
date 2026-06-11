@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "omni://contracts/data/document_chunk/v1",
+  "title": "DocumentChunk",
+  "description": "Week07 retrieval-ready chunk with explicit evidence anchors.",
+  "type": "object",
+  "required": [
+    "chunk_id",
+    "doc_id",
+    "source_id",
+    "section_id",
+    "source_fingerprint",
+    "chunk_index",
+    "chunk_strategy_version",
+    "parse_strategy_version",
+    "data_release_id",
+    "content",
+    "evidence_anchor_ids",
+    "anchor_count",
+    "quality_status",
+    "allowed_for_indexing"
+  ],
+  "properties": {
+    "chunk_id": {"type": "string", "pattern": "^chunk-[a-f0-9]{16,64}$"},
+    "doc_id": {"type": "string", "minLength": 1},
+    "source_id": {"type": "string", "minLength": 1},
+    "section_id": {"type": "string", "pattern": "^section-[a-f0-9]{16,64}$"},
+    "source_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "asset_type": {
+      "type": "string",
+      "enum": ["pdf", "html", "faq", "release_notes", "api_doc", "community_post", "image", "audio", "video", "other"]
+    },
+    "chunk_index": {"type": "integer", "minimum": 0},
+    "section_chunk_index": {"type": "integer", "minimum": 0},
+    "chunk_strategy_version": {"type": "string", "minLength": 1},
+    "parse_strategy_version": {"type": "string", "minLength": 1},
+    "data_release_id": {"type": "string", "minLength": 1},
+    "doc_version": {"type": ["string", "null"]},
+    "section_path": {"type": ["string", "null"]},
+    "section_type": {"type": ["string", "null"]},
+    "content": {"type": "string", "minLength": 1},
+    "page_no": {"type": ["integer", "null"], "minimum": 1},
+    "bbox": {
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {"type": "number"}
+        },
+        {"type": "null"}
+      ]
+    },
+    "parser_backend": {
+      "type": "string",
+      "enum": [
+        "docling",
+        "idp",
+        "marker",
+        "llamaparse",
+        "mistral_ocr",
+        "unstructured",
+        "pypdf",
+        "pypdf_baseline",
+        "tesseract_ocr",
+        "ocr_sidecar",
+        "audio_transcript_sidecar",
+        "video_ffmpeg_sidecar",
+        "fallback"
+      ]
+    },
+    "parser_capability": {
+      "type": "object",
+      "required": ["preserves_page", "preserves_bbox", "preserves_table", "fallback_used"],
+      "properties": {
+        "preserves_page": {"type": "boolean"},
+        "preserves_bbox": {"type": "boolean"},
+        "preserves_table": {"type": "boolean"},
+        "fallback_used": {"type": "boolean"},
+        "preserves_layout": {"type": "boolean"},
+        "preserves_heading": {"type": "boolean"},
+        "supports_ocr_fallback": {"type": "boolean"},
+        "extracts_ocr": {"type": "boolean"},
+        "extracts_transcript": {"type": "boolean"},
+        "extracts_media_metadata": {"type": "boolean"},
+        "extracts_keyframes": {"type": "boolean"},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "span_start": {"type": ["integer", "null"], "minimum": 0},
+    "span_end": {"type": ["integer", "null"], "minimum": 0},
+    "heading_path": {"type": "array", "items": {"type": "string"}},
+    "context_prefix": {"type": ["string", "null"]},
+    "evidence_anchor_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^anchor-[a-f0-9]{16,64}$"}
+    },
+    "anchor_count": {"type": "integer", "minimum": 1},
+    "quality_status": {"type": "string", "enum": ["pass", "warn", "fail", "quarantine"]},
+    "allowed_for_indexing": {"type": "boolean"},
+    "pii_detected": {"type": "boolean"},
+    "reason_codes": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

@@ -2,6 +2,23 @@
 
 Primary path: Docker devbox.
 
+## Code Relationship
+
+This diagram is the quickest way to explain the Week04 code path to learners: source PostgreSQL tables are configured by `settings.py`, registered through `catalog.py`, materialized by `materialize.py`, and then inspected or demonstrated by the four classroom scripts.
+
+![Week04 Lakehouse code relationship](../../docs/assets/week04/lakehouse-code-relationship.png)
+
+Core reading order:
+- `settings.py`
+- `catalog.py`
+- `materialize.py`
+- `inspect_metadata.py`
+- `demo_time_travel.py`
+- `demo_schema_evolution.py`
+- `perf_baseline.py`
+
+## Smoke Commands
+
 ```bash
 docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
   python -m pipelines.lakehouse.settings --check

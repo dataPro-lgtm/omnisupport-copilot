@@ -38,6 +38,7 @@
 - 产生真实 ingest summary
 - 输出 `batch_id`
 - 生成 smoke report
+- 工单 raw Bronze 使用 `source_id + source_fingerprint` 幂等写入
 
 ### 4. Checkpoint State
 
@@ -48,6 +49,7 @@
 责任：
 - 记录 source 上次成功处理到哪里
 - 为 replay/backfill 决策提供输入
+- `ticket_ingest.py` 在非 dry-run 且无 invalid/error 时自动更新
 
 ## Batch 粒度下的核心字段
 
@@ -65,4 +67,5 @@
 - 批次声明已经存在
 - 批次 admission 已经存在
 - 文档 / 工单的执行器已经存在
-- 但 batch checkpoint 之前缺失，Week03 新增后才形成最小闭环
+- batch checkpoint 由 `ticket_ingest.py` 自动写入
+- replay/backfill 默认输出 plan；显式 `--execute --input` 才执行补数

@@ -10,7 +10,7 @@ This mapping is based on:
 
 | Iceberg field | PostgreSQL source | Notes |
 |---|---|---|
-| `event_id` | `raw_ticket_event.event_id` | PostgreSQL default UUID is not stable across duplicate ingest attempts. |
+| `event_id` | `raw_ticket_event.event_id` | PostgreSQL default UUID is not the natural id; ingest idempotency is enforced by `source_id + source_fingerprint`. |
 | `source_id` | `raw_ticket_event.source_id` | Required. |
 | `manifest_id` | `raw_ticket_event.manifest_id` | Current ingest approximates this from source id. |
 | `ingest_batch_id` | `raw_ticket_event.ingest_batch_id` | Batch tracking. |
@@ -21,7 +21,7 @@ This mapping is based on:
 | `ingest_ts` | `raw_ticket_event.ingest_ts` | Time field. |
 | `source_fingerprint` | `raw_ticket_event.source_fingerprint` | Deterministic dedupe key input. |
 
-Deduplication: `source_id + source_fingerprint`, keeping the latest `ingest_ts`.
+Deduplication: PostgreSQL ingest and Week04 materialization both use `source_id + source_fingerprint`; Week04 keeps the latest `ingest_ts` if old duplicate rows already exist.
 
 ## `bronze.raw_doc_asset`
 
@@ -55,6 +55,6 @@ Write strategy: deterministic full refresh from current PostgreSQL Silver docume
 
 ## Field Gaps
 
-- `raw_ticket_event.event_id` is not a natural id; Week04 does not use it for dedupe.
+- `raw_ticket_event.event_id` is not a natural id; ingest and Week04 dedupe use `source_id + source_fingerprint`.
 - `knowledge_doc.title` and richer document parsing fields may be sparse until parse/normalize weeks.
 - Iceberg partitioning is intentionally minimal in Student Core Pack to keep local execution stable; partition evolution can be introduced later.

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "omni://contracts/data/parse_run/v1",
+  "title": "ParseRun",
+  "description": "Week07 parse-normalize run evidence.",
+  "type": "object",
+  "required": [
+    "parse_run_id",
+    "status",
+    "manifest_id",
+    "batch_id",
+    "parser",
+    "chunk_strategy_version",
+    "parse_strategy_version",
+    "data_release_id",
+    "started_at",
+    "finished_at",
+    "source_count",
+    "section_count",
+    "chunk_count",
+    "anchor_count",
+    "quality_status",
+    "week8_ready",
+    "artifacts"
+  ],
+  "properties": {
+    "parse_run_id": {"type": "string", "pattern": "^parse-run-[a-z0-9_.-]+$"},
+    "status": {"type": "string", "enum": ["success", "warn", "failed"]},
+    "manifest_id": {"type": ["string", "null"]},
+    "batch_id": {"type": ["string", "null"]},
+    "parser": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "idp",
+        "marker",
+        "docling",
+        "unstructured",
+        "pypdf",
+        "pypdf_baseline",
+        "ocr",
+        "media",
+        "fallback"
+      ]
+    },
+    "chunk_strategy_version": {"type": "string", "minLength": 1},
+    "parse_strategy_version": {"type": "string", "minLength": 1},
+    "data_release_id": {"type": "string", "minLength": 1},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "source_count": {"type": "integer", "minimum": 0},
+    "section_count": {"type": "integer", "minimum": 0},
+    "chunk_count": {"type": "integer", "minimum": 0},
+    "anchor_count": {"type": "integer", "minimum": 0},
+    "quality_status": {"type": "string", "enum": ["pass", "warn", "fail", "quarantine"]},
+    "week8_ready": {"type": "boolean"},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "artifacts": {
+      "type": "object",
+      "required": ["sections", "chunks", "evidence_anchors"],
+      "properties": {
+        "sections": {"type": "string"},
+        "chunks": {"type": "string"},
+        "evidence_anchors": {"type": "string"},
+        "quality_samples": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

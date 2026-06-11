@@ -24,6 +24,35 @@ SAFE_VIEW_COLUMNS = {
     "data_release_id",
     "generated_at",
 }
+SAFE_VIEW_METRICS = {
+    "ticket_count",
+    "open_ticket_count",
+    "p1_ticket_count",
+    "sla_breach_count",
+    "escalation_count",
+    "avg_backlog_age_days",
+    "avg_first_response_minutes",
+    "avg_handle_time_minutes",
+    "first_resolution_rate",
+    "escalation_rate",
+    "sla_breach_rate",
+}
+REQUIRED_METRIC_FIELDS_V11 = {
+    "business_name_zh",
+    "business_definition_zh",
+    "owner",
+    "metric_type",
+    "formula",
+    "unit",
+    "sensitivity",
+    "definition_status",
+    "version",
+    "quality_tests",
+}
+ALLOWED_AGGREGATIONS = {"sum", "avg", "min", "max"}
+ALLOWED_METRIC_TYPES = {"count", "average", "ratio"}
+ALLOWED_SENSITIVITY = {"low", "medium", "high"}
+ALLOWED_DEFINITION_STATUS = {"production", "experimental_proxy"}
 
 
 def load_registry(path: Path) -> dict[str, Any]:
@@ -76,10 +105,11 @@ def validate_registry(registry: dict[str, Any]) -> dict[str, Any]:
         errors.append(f"measure_column is not exposed by safe view: {measure_column}")
 
     metrics = registry.get("metrics", [])
+    seen_names: set[str] = set()
+    experimental_count = 0
     if not isinstance(metrics, list) or not metrics:
         errors.append("metrics must be a non-empty list")
     else:
-        seen_names: set[str] = set()
         registry_roles = set(registry.get("allowed_roles", []))
         for idx, metric in enumerate(metrics):
             if not isinstance(metric, dict):
@@ -92,8 +122,33 @@ def validate_registry(registry: dict[str, Any]) -> dict[str, Any]:
                 errors.append(f"duplicate metric name: {name}")
             else:
                 seen_names.add(name)
-            if metric.get("aggregation") not in {"sum", "avg", "min", "max"}:
+                if name not in SAFE_VIEW_METRICS:
+                    errors.append(f"metric is not allowed by safe view metric list: {name}")
+
+            for field in REQUIRED_METRIC_FIELDS_V11:
+                if field not in metric:
+                    errors.append(f"metric[{idx}] missing v1.1 field: {field}")
+
+            if metric.get("aggregation") not in ALLOWED_AGGREGATIONS:
                 errors.append(f"metric[{idx}] has unsupported aggregation: {metric.get('aggregation')}")
+            if metric.get("metric_type") not in ALLOWED_METRIC_TYPES:
+                errors.append(f"metric[{idx}] has unsupported metric_type: {metric.get('metric_type')}")
+            if metric.get("sensitivity") not in ALLOWED_SENSITIVITY:
+                errors.append(f"metric[{idx}] has unsupported sensitivity: {metric.get('sensitivity')}")
+            if metric.get("definition_status") not in ALLOWED_DEFINITION_STATUS:
+                errors.append(
+                    f"metric[{idx}] has unsupported definition_status: {metric.get('definition_status')}"
+                )
+            if metric.get("definition_status") == "experimental_proxy":
+                experimental_count += 1
+            if metric.get("metric_type") == "ratio" and (
+                not metric.get("numerator") or not metric.get("denominator")
+            ):
+                errors.append(f"metric[{idx}] ratio metric must declare numerator and denominator")
+            quality_tests = metric.get("quality_tests")
+            if not isinstance(quality_tests, list) or not quality_tests:
+                errors.append(f"metric[{idx}] quality_tests must be a non-empty list")
+
             metric_roles = set(metric.get("allowed_roles", []))
             if not metric_roles:
                 errors.append(f"metric[{idx}] missing allowed_roles")
@@ -104,7 +159,11 @@ def validate_registry(registry: dict[str, Any]) -> dict[str, Any]:
         "valid": not errors,
         "errors": errors,
         "metric_count": len(metrics) if isinstance(metrics, list) else 0,
+        "experimental_metric_count": experimental_count if isinstance(metrics, list) else 0,
+        "metric_names": sorted(seen_names) if isinstance(metrics, list) else [],
+        "registry_version": registry.get("registry_version"),
         "safe_view_columns": sorted(SAFE_VIEW_COLUMNS),
+        "safe_view_metrics": sorted(SAFE_VIEW_METRICS),
     }
 
 

@@ -1,0 +1,27 @@
+{
+  "section_id": "section-0123456789abcdef",
+  "doc_id": "doc-workspace-helpcenter-001",
+  "source_id": "doc:workspace:000000000001",
+  "source_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "asset_type": "html",
+  "section_index": 0,
+  "section_path": "Getting Started",
+  "section_type": "text",
+  "content": "Northstar Workspace helps admins configure identity, access, and recovery workflows.",
+  "page_no": null,
+  "bbox": null,
+  "bbox_missing_reason": null,
+  "parser_backend": "fallback",
+  "parser_capability": {
+    "preserves_page": false,
+    "preserves_bbox": false,
+    "preserves_table": false,
+    "fallback_used": true,
+    "warnings": ["fallback_parser_used"]
+  },
+  "parse_strategy_version": "parse_normalize_v1",
+  "data_release_id": "week07-dev-local",
+  "doc_version": "manifest-workspace-helpcenter-20260331-001",
+  "source_url_or_path": "s3://omni-raw-documents/workspace/helpcenter/getting-started.html",
+  "metadata": {"manifest_id": "manifest-workspace-helpcenter-20260331-001"}
+}

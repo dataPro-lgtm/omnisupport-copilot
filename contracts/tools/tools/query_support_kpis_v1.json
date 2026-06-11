@@ -1,7 +1,7 @@
 {
   "name": "query_support_kpis_v1",
-  "version": "v1.0",
-  "description": "Query governed support KPI metrics from the Week05 dbt mart. The caller can request only registry-approved metrics, dimensions, filters, and date windows. Raw SQL is not accepted.",
+  "version": "v1.1",
+  "description": "Query governed support KPI metrics from the Week05 dbt mart. The caller can request only registry-approved metrics, dimensions, filters, date windows, and policy-aware scopes. Raw SQL is not accepted.",
   "input_schema": {
     "type": "object",
     "required": ["actor_role", "metrics", "date_from", "date_to"],
@@ -14,10 +14,34 @@
         "type": "string",
         "description": "Optional actor identifier for audit trails."
       },
+      "trace_id": {
+        "type": "string",
+        "description": "End-to-end trace id propagated from Agent, RAG, or tool runtime."
+      },
+      "purpose": {
+        "type": "string",
+        "enum": ["classroom_demo", "support_ops_analysis", "incident_review", "regression_eval"],
+        "default": "classroom_demo",
+        "description": "Declared purpose for audit and policy review."
+      },
+      "actor_org_ids": {
+        "type": "array",
+        "maxItems": 50,
+        "items": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]+$"
+        },
+        "description": "Organizations the caller is allowed to query. In production this should be service-derived, not trusted from the client."
+      },
+      "include_experimental_metrics": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether the caller explicitly acknowledges experimental_proxy metric definitions."
+      },
       "metrics": {
         "type": "array",
         "minItems": 1,
-        "maxItems": 6,
+        "maxItems": 11,
         "items": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_]*$"
@@ -72,9 +96,10 @@
   },
   "output_schema": {
     "type": "object",
-    "required": ["allowed", "rows", "audit"],
+    "required": ["allowed", "status", "rows", "audit_id", "policy_applied", "data_freshness", "audit"],
     "properties": {
       "allowed": {"type": "boolean"},
+      "status": {"type": "string", "enum": ["ok", "denied", "error"]},
       "rows": {
         "type": "array",
         "items": {
@@ -84,28 +109,62 @@
       },
       "denial_code": {"type": ["string", "null"]},
       "message": {"type": ["string", "null"]},
+      "audit_id": {"type": "string"},
+      "trace_id": {"type": ["string", "null"]},
+      "policy_applied": {
+        "type": "array",
+        "items": {"type": "string"}
+      },
+      "data_freshness": {
+        "type": "object",
+        "required": ["generated_at_max", "release_id", "registry_id"],
+        "properties": {
+          "generated_at_max": {"type": ["string", "null"]},
+          "release_id": {"type": "string"},
+          "registry_id": {"type": "string"},
+          "registry_version": {"type": ["string", "null"]}
+        }
+      },
       "audit": {
         "type": "object",
-        "required": ["tool_name", "registry_id", "actor_role", "metrics", "date_from", "date_to"],
+        "required": ["audit_id", "tool_name", "registry_id", "actor_role", "metrics", "date_from", "date_to"],
         "properties": {
+          "audit_id": {"type": "string"},
           "tool_name": {"type": "string"},
           "registry_id": {"type": "string"},
+          "registry_version": {"type": ["string", "null"]},
           "actor_role": {"type": "string"},
           "actor_id": {"type": ["string", "null"]},
+          "trace_id": {"type": ["string", "null"]},
+          "purpose": {"type": "string"},
           "metrics": {"type": "array", "items": {"type": "string"}},
           "dimensions": {"type": "array", "items": {"type": "string"}},
           "filters": {"type": "object"},
+          "actor_org_ids": {"type": "array", "items": {"type": "string"}},
           "date_from": {"type": "string"},
           "date_to": {"type": "string"},
           "row_count": {"type": "integer"},
-          "release_id": {"type": "string"}
+          "release_id": {"type": "string"},
+          "safe_view": {"type": ["string", "null"]},
+          "query_fingerprint": {"type": "string"},
+          "policy_applied": {"type": "array", "items": {"type": "string"}}
         }
       }
     }
   },
   "allowed_roles": ["support_ops", "instructor", "admin"],
   "idempotent": true,
-  "idempotency_key_fields": ["actor_role", "metrics", "date_from", "date_to", "dimensions", "filters"],
+  "idempotency_key_fields": [
+    "actor_role",
+    "metrics",
+    "date_from",
+    "date_to",
+    "dimensions",
+    "filters",
+    "actor_org_ids",
+    "purpose",
+    "include_experimental_metrics"
+  ],
   "audit_fields": {
     "log_input": true,
     "log_output": true,
@@ -119,11 +178,17 @@
     "DIMENSION_DENIED": "One or more requested dimensions are not registered as safe dimensions.",
     "FILTER_DENIED": "One or more filters are not registered as safe filters.",
     "WINDOW_TOO_LARGE": "Requested date window exceeds the registry maximum.",
+    "ORG_SCOPE_REQUIRED": "Caller role requires organization scope in the Week05 v1.1 classroom policy.",
+    "EXPERIMENTAL_METRIC_NOT_ACKNOWLEDGED": "Metric uses an experimental_proxy definition and requires explicit caller acknowledgement.",
     "DB_UNAVAILABLE": "KPI mart is unavailable or query failed."
   },
   "hitl_conditions": [
     {
       "condition": "caller requests metrics or filters outside the registry",
+      "action": "reject"
+    },
+    {
+      "condition": "caller requests experimental_proxy metrics without acknowledgement",
       "action": "reject"
     }
   ],

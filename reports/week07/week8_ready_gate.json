@@ -1,0 +1,35 @@
+{
+  "data_release_id": "week07-dev-local",
+  "parse_run_id": "parse-run-week07-sample",
+  "chunk_strategy_version": "section_aware_v1",
+  "parse_strategy_version": "parse_normalize_v1",
+  "quality_status": "warn",
+  "week8_ready": false,
+  "metrics": {
+    "section_count": 4,
+    "chunk_count": 4,
+    "anchor_count": 4,
+    "metadata_completeness": 1.0,
+    "anchor_coverage": 1.0,
+    "empty_chunk_count": 0,
+    "unanchored_chunk_count": 0,
+    "orphan_chunk_count": 0,
+    "orphan_anchor_count": 0,
+    "pdf_missing_page_count": 0,
+    "fallback_chunk_count": 4,
+    "synthetic_source_chunk_count": 4,
+    "pii_suspected_chunk_count": 0,
+    "allowed_for_indexing_count": 0
+  },
+  "warnings": [
+    "fallback_parser_used",
+    "source_path_missing_synthetic_fallback"
+  ],
+  "errors": [],
+  "consumer_rules": {
+    "require_evidence_anchor": true,
+    "reject_allowed_for_indexing_false": true,
+    "citations_from_evidence_anchor_only": true,
+    "respect_strategy_versions": true
+  }
+}

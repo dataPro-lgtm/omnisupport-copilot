@@ -4,6 +4,18 @@
 
 Week04 turns Week03 ingest results into Iceberg-backed table state. It does not implement Week05 semantic models, Week07 parsing, Week08 RAG, or Week10 tools.
 
+## Code Relationship Map
+
+Use this map before the live demo to explain how Week04 code moves from PostgreSQL source tables to Iceberg snapshots, then branches into metadata inspection, time travel, schema evolution, and baseline reporting.
+
+![Week04 Lakehouse code relationship](../../docs/assets/week04/lakehouse-code-relationship.png)
+
+Reading order:
+- `settings.py` loads the local connection and warehouse settings.
+- `catalog.py` prepares the Iceberg catalog, namespaces, and tables.
+- `materialize.py` reads PostgreSQL source tables and writes the Week04 Iceberg tables.
+- `inspect_metadata.py`, `demo_time_travel.py`, `demo_schema_evolution.py`, and `perf_baseline.py` are classroom-facing verification and demonstration scripts.
+
 ## 1. Start Required Services
 
 ```bash

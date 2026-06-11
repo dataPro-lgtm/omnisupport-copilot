@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "omni://contracts/data/knowledge_section/v1",
+  "title": "KnowledgeSection",
+  "description": "Week07 parse-normalized document section before retrieval chunking.",
+  "type": "object",
+  "required": [
+    "section_id",
+    "doc_id",
+    "source_id",
+    "source_fingerprint",
+    "asset_type",
+    "section_index",
+    "section_path",
+    "section_type",
+    "content",
+    "parser_backend",
+    "parser_capability",
+    "parse_strategy_version",
+    "data_release_id",
+    "doc_version"
+  ],
+  "properties": {
+    "section_id": {"type": "string", "pattern": "^section-[a-f0-9]{16,64}$"},
+    "doc_id": {"type": "string", "minLength": 1},
+    "source_id": {"type": "string", "minLength": 1},
+    "source_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "asset_type": {
+      "type": "string",
+      "enum": ["pdf", "html", "faq", "release_notes", "api_doc", "community_post", "image", "audio", "video", "other"]
+    },
+    "section_index": {"type": "integer", "minimum": 0},
+    "section_path": {"type": "string", "minLength": 1},
+    "section_type": {
+      "type": "string",
+      "enum": ["text", "table", "image", "list", "title", "header", "transcript"]
+    },
+    "content": {"type": "string", "minLength": 1},
+    "page_no": {"type": ["integer", "null"], "minimum": 1},
+    "bbox": {
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {"type": "number"}
+        },
+        {"type": "null"}
+      ]
+    },
+    "bbox_missing_reason": {"type": ["string", "null"]},
+    "parser_backend": {
+      "type": "string",
+      "enum": [
+        "docling",
+        "idp",
+        "marker",
+        "llamaparse",
+        "mistral_ocr",
+        "unstructured",
+        "pypdf",
+        "pypdf_baseline",
+        "tesseract_ocr",
+        "ocr_sidecar",
+        "audio_transcript_sidecar",
+        "video_ffmpeg_sidecar",
+        "fallback"
+      ]
+    },
+    "parser_capability": {
+      "type": "object",
+      "required": ["preserves_page", "preserves_bbox", "preserves_table", "fallback_used"],
+      "properties": {
+        "preserves_page": {"type": "boolean"},
+        "preserves_bbox": {"type": "boolean"},
+        "preserves_table": {"type": "boolean"},
+        "fallback_used": {"type": "boolean"},
+        "preserves_layout": {"type": "boolean"},
+        "preserves_heading": {"type": "boolean"},
+        "supports_ocr_fallback": {"type": "boolean"},
+        "extracts_ocr": {"type": "boolean"},
+        "extracts_transcript": {"type": "boolean"},
+        "extracts_media_metadata": {"type": "boolean"},
+        "extracts_keyframes": {"type": "boolean"},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "parse_strategy_version": {"type": "string", "minLength": 1},
+    "data_release_id": {"type": "string", "minLength": 1},
+    "doc_version": {"type": "string", "minLength": 1},
+    "source_url_or_path": {"type": ["string", "null"]},
+    "metadata": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"asset_type": {"const": "pdf"}},
+        "required": ["asset_type"]
+      },
+      "then": {"required": ["page_no", "bbox"]}
+    },
+    {
+      "if": {
+        "properties": {
+          "asset_type": {"const": "pdf"},
+          "bbox": {"type": "null"}
+        },
+        "required": ["asset_type", "bbox"]
+      },
+      "then": {"required": ["bbox_missing_reason"]}
+    }
+  ],
+  "additionalProperties": false
+}

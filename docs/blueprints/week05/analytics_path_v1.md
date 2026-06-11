@@ -48,3 +48,14 @@ flowchart LR
 - `agent_tool_input_view` 是 Agent 查询边界，只包含安全维度和数值列。
 - `metric_registry_v1.yml` 控制指标、维度、过滤器、角色和最大时间窗口。
 - Tool API 使用参数化 SQL，仅允许访问 `analytics.agent_tool_input_view`。
+
+## v1.1 Experimental Extension
+
+Week05 v1.1 在最小闭环上增加实验型语义指标包，目标是让指标从“可查询”推进到“可解释、可审计、可测试”。
+
+新增控制点：
+- `support_kpi_mart` 增加首响、处理时长、升级率、SLA 违约率和一次解决率代理指标。
+- `metric_registry_v1.yml` 为每个指标登记 owner、unit、formula、sensitivity、definition_status 和 quality_tests。
+- `query_support_kpis_v1` 输入增加 trace/purpose/org scope/experimental acknowledgement。
+- Tool API 输出增加 audit_id、policy_applied 和 data_freshness。
+- `first_resolution_rate` 是 `experimental_proxy`，未传 `include_experimental_metrics=true` 时必须被拒绝。

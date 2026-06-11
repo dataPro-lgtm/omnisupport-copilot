@@ -1,5 +1,6 @@
 version: 1
 registry_id: week05_support_metrics_v1
+registry_version: 1.1.0
 owner: analytics_engineering
 description: "Governed Week05 metrics exposed to query_support_kpis_v1."
 source_model: support_kpi_mart
@@ -25,31 +26,172 @@ allowed_roles:
 metrics:
   - name: ticket_count
     label: "Ticket Count"
+    business_name_zh: "工单量"
     description: "Number of tickets created in the selected date window."
+    business_definition_zh: "统计窗口内创建的工单数量，以 created_date 作为时间口径。"
+    owner: support_ops
+    metric_type: count
+    formula: "count(ticket_id)"
     aggregation: sum
+    unit: tickets
+    sensitivity: low
+    definition_status: production
+    version: 1.1.0
     allowed_roles: ["support_ops", "instructor", "admin"]
+    quality_tests: ["not_null", "non_negative"]
   - name: open_ticket_count
     label: "Open Ticket Count"
+    business_name_zh: "未结工单量"
     description: "Number of tickets still open at mart build time."
+    business_definition_zh: "mart 构建时仍处于 open、pending_customer、in_progress 或 escalated 状态的工单数。"
+    owner: support_ops
+    metric_type: count
+    formula: "sum(case when is_open then 1 else 0 end)"
     aggregation: sum
+    unit: tickets
+    sensitivity: low
+    definition_status: production
+    version: 1.1.0
     allowed_roles: ["support_ops", "instructor", "admin"]
+    quality_tests: ["not_null", "non_negative"]
   - name: p1_ticket_count
     label: "P1 Ticket Count"
+    business_name_zh: "P1 工单量"
     description: "Number of P1 critical tickets created in the selected date window."
+    business_definition_zh: "priority 属于 p1 或 p1_critical 的工单数量。"
+    owner: support_ops
+    metric_type: count
+    formula: "sum(case when is_p1 then 1 else 0 end)"
     aggregation: sum
+    unit: tickets
+    sensitivity: low
+    definition_status: production
+    version: 1.1.0
     allowed_roles: ["support_ops", "instructor", "admin"]
+    quality_tests: ["not_null", "non_negative"]
   - name: sla_breach_count
     label: "SLA Breach Count"
+    business_name_zh: "SLA 违约量"
     description: "Number of tickets whose resolved/current time exceeded SLA due time."
+    business_definition_zh: "已解决时间或当前时间超过 sla_due_at 的工单数量。"
+    owner: support_ops
+    metric_type: count
+    formula: "sum(case when sla_breached then 1 else 0 end)"
     aggregation: sum
+    unit: tickets
+    sensitivity: low
+    definition_status: production
+    version: 1.1.0
     allowed_roles: ["support_ops", "instructor", "admin"]
+    quality_tests: ["not_null", "non_negative"]
   - name: escalation_count
     label: "Escalation Count"
+    business_name_zh: "升级工单量"
     description: "Number of tickets in escalated status."
+    business_definition_zh: "status 为 escalated 的工单数量。"
+    owner: support_ops
+    metric_type: count
+    formula: "sum(case when is_escalated then 1 else 0 end)"
     aggregation: sum
+    unit: tickets
+    sensitivity: low
+    definition_status: production
+    version: 1.1.0
     allowed_roles: ["support_ops", "instructor", "admin"]
+    quality_tests: ["not_null", "non_negative"]
   - name: avg_backlog_age_days
     label: "Average Backlog Age Days"
+    business_name_zh: "平均积压年龄"
     description: "Average case age in days for selected tickets."
+    business_definition_zh: "工单从创建到 resolved_at 或当前时间的天数均值。"
+    owner: support_ops
+    metric_type: average
+    formula: "avg(backlog_age_days)"
     aggregation: avg
+    unit: days
+    sensitivity: low
+    definition_status: production
+    version: 1.1.0
     allowed_roles: ["support_ops", "instructor", "admin"]
+    quality_tests: ["non_negative"]
+  - name: avg_first_response_minutes
+    label: "Average First Response Minutes"
+    business_name_zh: "平均首响时长"
+    description: "Average minutes from ticket creation to first comment."
+    business_definition_zh: "工单创建时间到第一条工单评论时间的平均分钟数；没有评论的工单不参与均值。"
+    owner: support_ops
+    metric_type: average
+    formula: "avg(first_comment_at - created_at)"
+    aggregation: avg
+    unit: minutes
+    sensitivity: low
+    definition_status: production
+    version: 1.1.0
+    allowed_roles: ["support_ops", "instructor", "admin"]
+    quality_tests: ["non_negative"]
+  - name: avg_handle_time_minutes
+    label: "Average Handle Time Minutes"
+    business_name_zh: "平均处理时长"
+    description: "Average minutes from ticket creation to resolution."
+    business_definition_zh: "resolved_at 与 created_at 的平均分钟差；仅统计已解决工单。"
+    owner: support_ops
+    metric_type: average
+    formula: "avg(resolved_at - created_at)"
+    aggregation: avg
+    unit: minutes
+    sensitivity: low
+    definition_status: production
+    version: 1.1.0
+    allowed_roles: ["support_ops", "instructor", "admin"]
+    quality_tests: ["non_negative"]
+  - name: first_resolution_rate
+    label: "First Resolution Rate"
+    business_name_zh: "一次解决率"
+    description: "Experimental proxy: resolved and not escalated tickets divided by resolved tickets."
+    business_definition_zh: "实验代理口径：已解决且未升级的工单数 / 已解决工单数。真实生产建议接入 reopen 事件后重定义。"
+    owner: support_ops
+    metric_type: ratio
+    formula: "first_resolution_count / resolved_ticket_count"
+    numerator: first_resolution_count
+    denominator: resolved_ticket_count
+    aggregation: avg
+    unit: ratio
+    sensitivity: medium
+    definition_status: experimental_proxy
+    version: 1.1.0
+    allowed_roles: ["support_ops", "instructor", "admin"]
+    quality_tests: ["between_0_and_1", "denominator_not_zero_when_reported"]
+  - name: escalation_rate
+    label: "Escalation Rate"
+    business_name_zh: "升级率"
+    description: "Escalated tickets divided by created tickets in the selected window."
+    business_definition_zh: "升级工单量 / 工单量。"
+    owner: support_ops
+    metric_type: ratio
+    formula: "escalation_count / ticket_count"
+    numerator: escalation_count
+    denominator: ticket_count
+    aggregation: avg
+    unit: ratio
+    sensitivity: low
+    definition_status: production
+    version: 1.1.0
+    allowed_roles: ["support_ops", "instructor", "admin"]
+    quality_tests: ["between_0_and_1"]
+  - name: sla_breach_rate
+    label: "SLA Breach Rate"
+    business_name_zh: "SLA 违约率"
+    description: "SLA-breached tickets divided by created tickets in the selected window."
+    business_definition_zh: "SLA 违约量 / 工单量。"
+    owner: support_ops
+    metric_type: ratio
+    formula: "sla_breach_count / ticket_count"
+    numerator: sla_breach_count
+    denominator: ticket_count
+    aggregation: avg
+    unit: ratio
+    sensitivity: low
+    definition_status: production
+    version: 1.1.0
+    allowed_roles: ["support_ops", "instructor", "admin"]
+    quality_tests: ["between_0_and_1"]

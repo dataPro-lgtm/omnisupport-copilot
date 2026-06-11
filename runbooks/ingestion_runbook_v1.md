@@ -9,7 +9,7 @@
 1. admission gate
 2. smoke report
 3. checkpoint/state
-4. replay/backfill dry-run
+4. replay/backfill plan and explicit execute
 
 ## Architecture Map
 
@@ -60,6 +60,21 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
     --report-json reports/week03/ticket_ingest_smoke_report.json
 ```
 
+真实写入时，`ticket_ingest` 会做两件事：
+
+- PostgreSQL `raw_ticket_event` 按 `source_id + source_fingerprint` 做幂等保护，同一份 JSONL 重跑不会让 Bronze 翻倍。
+- 成功且无 invalid/error 时写入 checkpoint，供 `replay_backfill --state-path` 读取。
+
+示例：
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.ingestion.ticket_ingest \
+    --input tests/integration/fixtures/week03/tickets-smoke.jsonl \
+    --batch-id batch-week03-ticket-smoke \
+    --report-json reports/week03/ticket_ingest_smoke_report.json
+```
+
 ## Step 4：doc ingest smoke report
 
 ```bash
@@ -85,7 +100,7 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 - `last_run_id`
 - `updated_at`
 
-## Step 6：replay/backfill dry-run
+## Step 6：replay/backfill plan
 
 ```bash
 docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
@@ -95,6 +110,23 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
     --dry-run \
     --report-json reports/week03/recovery_decision_log.json
 ```
+
+默认只输出计划，不改数据库。需要真正执行补数时，必须显式加 `--execute --input`：
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.ingestion.replay_backfill \
+    --mode backfill \
+    --source-id structured:tickets:seed_batch_001 \
+    --batch-id batch-week03-backfill-001 \
+    --start-cursor 2026-04-17T00:00:00Z \
+    --end-cursor 2026-04-17T23:59:59Z \
+    --input data/canonization/tickets/tickets-seed-001.jsonl \
+    --execute \
+    --report-json reports/week03/recovery_execute_log.json
+```
+
+执行路径仍然复用 `ticket_ingest`，所以会继承 raw Bronze 幂等和 checkpoint 更新。
 
 ## Step 7：Week03 integration tests
 

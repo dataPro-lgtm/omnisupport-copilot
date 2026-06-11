@@ -2,6 +2,12 @@
 
 Week06 asset keys are namespaced under `week06/` so they do not collide with existing Week01-Week05 assets.
 
+## Code Reading Map
+
+The following map shows how the Week06 code should be read from file to file. It separates the main `assets.py` chain from the supporting partition, checks, backfill, evidence, and Dagster registration files.
+
+![Week06 Data Factory code reading map](../../assets/week06/week06-data-factory-code-map.png)
+
 ```text
 week06/source/seed_manifests
   -> week06/factory/manifest_gate

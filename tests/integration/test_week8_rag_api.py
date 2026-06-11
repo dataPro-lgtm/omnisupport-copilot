@@ -8,7 +8,9 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services", "rag_api"))
 os.environ.setdefault("OTEL_ENABLED", "false")
 
-if "asyncpg" not in sys.modules:
+try:
+    import asyncpg as _asyncpg  # noqa: F401
+except ImportError:
     asyncpg_stub = types.ModuleType("asyncpg")
 
     class Pool:
@@ -17,8 +19,12 @@ if "asyncpg" not in sys.modules:
     async def create_pool(*_args, **_kwargs):
         raise RuntimeError("asyncpg is not installed in the local contract test env")
 
+    async def connect(*_args, **_kwargs):
+        raise RuntimeError("asyncpg is not installed in the local contract test env")
+
     asyncpg_stub.Pool = Pool
     asyncpg_stub.create_pool = create_pool
+    asyncpg_stub.connect = connect
     sys.modules["asyncpg"] = asyncpg_stub
 
 from app.main import app

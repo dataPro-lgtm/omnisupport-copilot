@@ -52,7 +52,16 @@ joined as (
             when t.resolved_at is not null
                 then extract(epoch from (t.resolved_at - t.created_at)) / 86400.0
             else extract(epoch from (current_timestamp - t.created_at)) / 86400.0
-        end as backlog_age_days
+        end as backlog_age_days,
+        case
+            when t.resolved_at is not null
+                then extract(epoch from (t.resolved_at - t.created_at)) / 60.0
+            else null
+        end as handle_time_minutes,
+        case
+            when t.resolved_at is not null and not t.is_escalated then true
+            else false
+        end as is_first_resolution_proxy
     from tickets t
     left join customers c on t.customer_id = c.customer_id
     left join first_comments fc on t.ticket_id = fc.ticket_id

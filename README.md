@@ -141,10 +141,16 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 - `3000` — Dagster
 - `9000/9001` — MinIO API / Console
 - `6006` — Phoenix
+- `15432` — PostgreSQL / pgvector（可通过 `POSTGRES_HOST_PORT` 覆盖）
 
-默认不对宿主机开放：
-- PostgreSQL `5432`
-  - 只在 Docker 网络内可见，避免与学员本机数据库冲突
+DataGrip / DBeaver 连接容器内 PostgreSQL：
+- Host: `localhost`
+- Port: `15432`
+- Database: `omnisupport`
+- User: `omni`
+- Password: `omnipass`
+
+如果本机没有 PostgreSQL 端口冲突，也可以在 `infra/env/.env.local` 中设置 `POSTGRES_HOST_PORT=5432`。
 
 ---
 
@@ -226,7 +232,8 @@ omnisupport-copilot/
 | W04 | 🔄 | PyIceberg SQL Catalog、MinIO warehouse、Bronze/Silver 四表物化、snapshot/time travel/schema evolution |
 | W05 | 🔄 | dbt Core、support KPI mart、metric registry、受控 KPI 查询工具 |
 | W06 | 🔄 | 资产化编排、daily partitions、backfill dry-run、asset checks、run evidence |
-| W07-08 | 📅 | 多模态解析、混合检索、RAG API |
+| W07 | 🔄 | IDP-first parse/normalize、structure-aware chunk、evidence anchor、quality gate、Week08 ready gate |
+| W08 | 🔄 | 混合检索、RAG API、citation contract、smoke eval |
 | W09-15 | 📅 | Tool层、评测、Tracing、GraphRAG、治理、Capstone |
 
 ## Week04 Lakehouse 最小闭环
@@ -286,6 +293,7 @@ Week05 runbook: [runbooks/week05/README.md](runbooks/week05/README.md)
 边界说明：
 - Agent 只能通过 `query_support_kpis_v1` 查询 `analytics.agent_tool_input_view`。
 - 不接受 raw SQL，不暴露 PII 字段，不绕过 `metric_registry_v1.yml`。
+- v1.1 实验扩展加入首响/处理/比率指标、指标包元数据、组织范围策略、实验口径确认和审计字段。
 - dbt `target/` 和本地运行日志是临时产物，不提交。
 
 ---
@@ -319,6 +327,58 @@ Week06 runbook: [runbooks/week06-data-factory.md](runbooks/week06-data-factory.m
 - 默认 `WEEK06_INGEST_DRY_RUN=true`，因此不会修改 PostgreSQL。
 - Week04 lakehouse / Week05 analytics 在 Week06 中是 optional observation，缺失时必须写 `not_available`，不能伪造成 passed。
 - Podman 使用同一个 compose 文件，详见 [runbooks/podman-local.md](runbooks/podman-local.md)。
+
+---
+
+## Week07 Unstructured Data 最小闭环
+
+Week07 把文档资产从 manifest / raw file 推进到可检索、可审计、可交给 Week08 的 chunks 和 evidence anchors。默认仍然走 Docker/Podman `devbox`。PDF `auto` 会优先尝试 Marker/Docling IDP；课堂环境没有这些可选依赖时，会显式降级为 `pypdf_baseline`。
+
+```bash
+# 1. 校验 Week07 parse contracts
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  pytest tests/contract/test_week07_parse_contracts.py -v
+
+# 2. 运行 parse/normalize dry-run
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.parse_normalize.run_parse \
+    --manifest-path data/seed_manifests/manifest_workspace_helpcenter_v1.json \
+    --parser auto \
+    --chunk-strategy section_aware_v1 \
+    --data-release-id week07-dev-local \
+    --dry-run \
+    --artifacts-dir artifacts/week07 \
+    --report-json reports/week07/parse_run_report.json \
+    --quality-report-md reports/week07/chunk_quality_report.md \
+    --week8-gate-json reports/week07/week8_ready_gate.json
+
+# 2b. 运行真实 PDF / 图片 OCR / 音频 / 视频多模态 dry-run
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python -m pipelines.parse_normalize.run_parse \
+    --manifest-path data/seed_manifests/manifest_week07_multimodal_v1.json \
+    --parser auto \
+    --chunk-strategy section_aware_v1 \
+    --data-release-id week07-multimodal-local \
+    --dry-run \
+    --artifacts-dir artifacts/week07-multimodal \
+    --report-json reports/week07/parse_run_report_multimodal.json \
+    --quality-report-md reports/week07/chunk_quality_report_multimodal.md \
+    --week8-gate-json reports/week07/week8_ready_gate_multimodal.json
+
+# 3. 校验 parse pipeline 和 quality gate
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  pytest tests/integration/test_week07_parse_pipeline.py tests/integration/test_week07_quality_gate.py tests/integration/test_week07_multimodal_pipeline.py tests/integration/test_week07_ppt_alignment.py -v
+```
+
+Week07 runbook: [runbooks/week07-unstructured-data.md](runbooks/week07-unstructured-data.md)
+
+边界说明：
+- Week07 不做 embedding、不建 pgvector index、不调用 LLM。
+- Citation 只能来自 `evidence_anchor`，不能由 LLM 编造。
+- `--parser pypdf` 是教学 baseline；生产方向是 Marker/Docling IDP，可选适配入口见 `docs/blueprints/week07/ppt-alignment-roadmap.md`。
+- 默认 manifest 指向课程占位 S3 路径，本地 dry-run 会明确标记 fallback；真实索引前需要提供 raw file 或对象存储读取。
+- `manifest_week07_multimodal_v1.json` 使用真实课程素材，覆盖 PDF、图片 OCR、音频 transcript、视频 keyframe/transcript。
+- Week08 只能消费 `allowed_for_indexing=true` 且有 evidence anchor 的 chunk。
 
 ---
 

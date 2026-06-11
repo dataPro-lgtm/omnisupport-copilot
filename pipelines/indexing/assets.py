@@ -4,8 +4,6 @@ The assets wrap the existing index builder; they do not introduce a parallel
 embedding or retrieval system.
 """
 
-from __future__ import annotations
-
 import asyncio
 import os
 

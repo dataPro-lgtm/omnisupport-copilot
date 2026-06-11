@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "omni://contracts/data/chunk_quality_sample/v1",
+  "title": "ChunkQualitySample",
+  "description": "Week07 sampled chunk quality review record.",
+  "type": "object",
+  "required": [
+    "sample_id",
+    "chunk_id",
+    "section_id",
+    "status",
+    "reason_codes",
+    "checks"
+  ],
+  "properties": {
+    "sample_id": {"type": "string", "pattern": "^quality-sample-[a-f0-9]{16,64}$"},
+    "chunk_id": {"type": "string", "pattern": "^chunk-[a-f0-9]{16,64}$"},
+    "section_id": {"type": "string", "pattern": "^section-[a-f0-9]{16,64}$"},
+    "status": {"type": "string", "enum": ["pass", "warn", "fail"]},
+    "reason_codes": {"type": "array", "items": {"type": "string"}},
+    "checks": {
+      "type": "object",
+      "required": ["has_content", "has_anchor", "has_source_fingerprint", "pii_suspected"],
+      "properties": {
+        "has_content": {"type": "boolean"},
+        "has_anchor": {"type": "boolean"},
+        "has_source_fingerprint": {"type": "boolean"},
+        "pii_suspected": {"type": "boolean"},
+        "notes": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

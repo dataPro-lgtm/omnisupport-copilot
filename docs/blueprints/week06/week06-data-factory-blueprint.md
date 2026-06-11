@@ -2,6 +2,12 @@
 
 Week06 turns the Week03-Week05 runnable paths into an asset-oriented data factory. The goal is not to rewrite ingest, lakehouse, or analytics logic. The goal is to provide orchestration boundaries, partitions, checks, backfill planning, and run evidence that can be inspected in Dagster and executed from the Docker or Podman devbox.
 
+## Code Reading Map
+
+Use this map before reading the Week06 source files. It is intentionally organized as a code-reading guide: start with runtime configuration and Dagster registration, follow the `assets.py` main chain, then read checks, backfill, evidence, and tests.
+
+![Week06 Data Factory code reading map](../../assets/week06/week06-data-factory-code-map.png)
+
 ## Scope
 
 Student Core Pack includes:

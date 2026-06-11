@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -35,6 +36,7 @@ class RecoveryPlan:
     warnings: list[str] = field(default_factory=list)
     recommended_action: str = "proceed_to_next_stage"
     status: str = "ok"
+    execution_result: dict | None = None
     generated_at: str = field(default_factory=utc_now_iso)
 
     def to_dict(self) -> dict:
@@ -138,6 +140,9 @@ def main() -> None:
     parser.add_argument("--start-cursor", default=None)
     parser.add_argument("--end-cursor", default=None)
     parser.add_argument("--state-path", type=Path, default=DEFAULT_STATE_PATH)
+    parser.add_argument("--input", type=Path, default=None, help="ticket JSONL input used only with --execute")
+    parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--execute", action="store_true", help="execute ticket_ingest after writing the plan")
     parser.add_argument("--report-json", type=Path, default=None)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -152,6 +157,24 @@ def main() -> None:
         end_cursor=args.end_cursor,
         checkpoint=checkpoint,
     )
+    if args.execute:
+        if not args.input:
+            raise SystemExit("--execute requires --input <ticket-jsonl>")
+        from pipelines.ingestion.ticket_ingest import run_ingest
+
+        plan.execution_plan.append(
+            "Run ticket_ingest through the recovery entrypoint; non-dry-run execution uses the idempotent raw-event guard and checkpoint update."
+        )
+        plan.execution_result = asyncio.run(
+            run_ingest(
+                args.input,
+                args.batch_id or f"{args.mode}-{args.source_id.replace(':', '-')}",
+                dry_run=args.dry_run,
+                limit=args.limit,
+                report_path=None,
+                state_path=args.state_path,
+            )
+        )
 
     write_json_report(
         plan.to_dict(),

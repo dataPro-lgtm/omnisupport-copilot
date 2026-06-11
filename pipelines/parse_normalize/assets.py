@@ -1,11 +1,33 @@
-"""Dagster 资产定义 — 解析与规范化层
+"""Dagster assets for the Week07 parse/normalize layer."""
 
-Week01 骨架：定义解析资产的接口与元数据契约。
-Week07 起接入真实 Docling/Unstructured 文档解析、Whisper ASR、FFmpeg 视频切片。
-"""
+import json
+import os
+from pathlib import Path
 
-from dagster import asset, AssetExecutionContext, MetadataValue, Output
-from typing import Any
+from dagster import AssetExecutionContext, MetadataValue, Output, asset
+
+from pipelines.parse_normalize.run_parse import run_parse_pipeline
+
+
+def _week07_manifest_path() -> Path:
+    return Path(
+        os.environ.get(
+            "WEEK07_MANIFEST_PATH",
+            "data/seed_manifests/manifest_workspace_helpcenter_v1.json",
+        )
+    )
+
+
+def _week07_artifacts_dir() -> Path:
+    return Path(os.environ.get("WEEK07_ARTIFACTS_DIR", "artifacts/week07"))
+
+
+def _week07_report_dir() -> Path:
+    return Path(os.environ.get("WEEK07_REPORT_DIR", "reports/week07"))
+
+
+def _read_json(path: Path):
+    return json.loads(path.read_text()) if path.exists() else []
 
 
 @asset(
@@ -21,26 +43,39 @@ def parsed_doc_sections(
     """
     文档解析 → knowledge_section。
 
-    Week01: 骨架占位，输出空列表。
-    Week07: 接入 Docling/Unstructured，保留页码/段落/表格/图像/坐标。
+    Thin wrapper over `run_parse_pipeline`. The CLI remains the primary
+    classroom path; Dagster observes the same artifacts instead of maintaining a
+    second parser implementation.
     """
-    sections = []
+    report_dir = _week07_report_dir()
+    parse_run, gate = run_parse_pipeline(
+        manifest_path=_week07_manifest_path(),
+        parser=os.environ.get("WEEK07_PARSER", "auto"),
+        chunk_strategy_version=os.environ.get("WEEK07_CHUNK_STRATEGY_VERSION", "section_aware_v1"),
+        data_release_id=os.environ.get("WEEK07_DATA_RELEASE_ID", "week07-dev-local"),
+        dry_run=os.environ.get("WEEK07_PARSE_DRY_RUN", "true").lower() == "true",
+        artifacts_dir=_week07_artifacts_dir(),
+        report_json=report_dir / "parse_run_report.json",
+        quality_report_md=report_dir / "chunk_quality_report.md",
+        week8_gate_json=report_dir / "week8_ready_gate.json",
+    )
+    sections = _read_json(Path(parse_run.artifacts["sections"]))
 
-    for doc in raw_doc_assets:
-        # TODO(Week07): 调用 Docling 或 Unstructured 解析
-        # 解析结果应包含：
-        #   - section_id, doc_source_id, section_path, content
-        #   - page_no, bbox, section_type (text/table/image)
-        #   - source_fingerprint, doc_version
-        context.log.debug(f"[stub] Would parse: {doc['source_id']}")
-
-    context.log.info(f"[Week01 stub] parsed_doc_sections: 0 sections (接入 Week07)")
+    context.log.info(
+        "Week07 parsed %s documents into %s sections",
+        len(raw_doc_assets),
+        len(sections),
+    )
 
     return Output(
         sections,
         metadata={
-            "section_count": MetadataValue.int(0),
-            "stub": MetadataValue.bool(True),
+            "section_count": MetadataValue.int(len(sections)),
+            "chunk_count": MetadataValue.int(parse_run.chunk_count),
+            "quality_status": MetadataValue.text(parse_run.quality_status),
+            "week8_ready": MetadataValue.bool(gate.week8_ready),
+            "parse_run_id": MetadataValue.text(parse_run.parse_run_id),
+            "report_path": MetadataValue.text(str(report_dir / "parse_run_report.json")),
         },
     )
 
@@ -58,25 +93,21 @@ def knowledge_chunks(
     """
     Chunk 切分 + EvidenceAnchor 生成。
 
-    Week01: 骨架占位。
-    Week07-08: 实现滑动窗口切分 + pgvector 嵌入写入。
+    Reads the chunk artifact emitted by `parsed_doc_sections`. Week08 owns
+    embeddings and pgvector writes; Week07 only marks indexing eligibility.
     """
-    chunks = []
-
-    for section in parsed_doc_sections:
-        # TODO(Week07): 滑动窗口切分
-        # TODO(Week08): 嵌入生成 + pgvector 写入
-        # 每个 chunk 必须包含 evidence_anchor:
-        #   source_id, source_url, page_no, section_path, doc_version
-        pass
-
-    context.log.info(f"[Week01 stub] knowledge_chunks: 0 chunks (接入 Week07-08)")
+    chunk_path = _week07_artifacts_dir() / "chunks.json"
+    chunks = _read_json(chunk_path)
+    allowed = sum(1 for chunk in chunks if chunk.get("allowed_for_indexing"))
+    context.log.info("Week07 loaded %s chunks; %s allowed for Week08 indexing", len(chunks), allowed)
 
     return Output(
         chunks,
         metadata={
-            "chunk_count": MetadataValue.int(0),
-            "stub": MetadataValue.bool(True),
+            "section_count": MetadataValue.int(len(parsed_doc_sections)),
+            "chunk_count": MetadataValue.int(len(chunks)),
+            "allowed_for_indexing_count": MetadataValue.int(allowed),
+            "artifact_path": MetadataValue.text(str(chunk_path)),
         },
     )
 

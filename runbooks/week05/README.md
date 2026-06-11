@@ -9,6 +9,20 @@
 - 本周不引入 dbt Cloud、MetricFlow、Snowflake、BigQuery、Spark 或 Trino。
 - 本周不做 NL2SQL，Agent 只能通过白名单工具查询指标。
 
+## Code Structure Map
+
+录播前建议先用这张图解释 Week05 的代码结构：PostgreSQL 原始/事实表先进入 dbt staging，再进入 intermediate 业务加工层，最后形成 marts、安全视图、metric registry 和 Tool API 查询入口。
+
+![Week05 analytics code structure](../../docs/assets/week05/analytics-code-structure.png)
+
+讲解顺序：
+- `analytics/models/sources.yml` 定义 PostgreSQL source 表。
+- `analytics/models/staging/` 做轻度清洗、字段标准化和类型统一。
+- `analytics/models/intermediate/` 做业务含义加工，例如是否打开、是否 P1、是否 SLA 超期。
+- `analytics/models/marts/` 产出 `support_case_mart`、`support_kpi_mart` 和 `agent_tool_input_view`。
+- `analytics/metric_registry_v1.yml` 定义指标、维度和角色白名单。
+- `services/tool_api/app/kpi_query.py` 通过参数化查询安全视图，只返回治理后的 KPI 行。
+
 ## 1. 启动依赖
 
 ```bash
@@ -146,3 +160,87 @@ docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-c
 - `analytics/logs/`
 - `analytics/dbt_packages/`
 - Week03/Week04/Week05 本地实验生成的临时 JSON、截图和 target artifacts，除非文档明确要求作为课程交付证据。
+
+## 10. v1.1 Experimental Extension — Metric Pack + Policy-aware KPI Tool
+
+本实验在 Week05 最小闭环上增加一层实验型语义指标包，目标是让学生看到“新增指标”不只是改 SQL，还要同步 registry、safe view、tool contract、runtime policy、tests 和 runbook。
+
+新增能力：
+- 新增指标：`avg_first_response_minutes`、`avg_handle_time_minutes`、`first_resolution_rate`、`escalation_rate`、`sla_breach_rate`。
+- `metric_registry_v1.yml` 升级为 v1.1 指标包，增加 `owner`、`unit`、`metric_type`、`formula`、`sensitivity`、`definition_status`、`quality_tests` 等字段。
+- `query_support_kpis_v1` 增加 `trace_id`、`purpose`、`actor_org_ids`、`include_experimental_metrics`。
+- Tool Runtime 增加 `audit_id`、`policy_applied`、`data_freshness`、组织范围过滤和实验指标确认策略。
+
+课堂边界：
+- `first_resolution_rate` 是 `experimental_proxy`，当前用“已解决且未升级 / 已解决”作为课堂代理口径。真实生产应接入 reopen 事件后再重定义。
+- `support_ops` 角色必须传 `actor_org_ids`，课堂版用于演示组织范围策略；生产环境应由服务端根据身份解析 org scope，不能信任客户端自报。
+
+### 10.1 构建和测试
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  bash -lc 'cd analytics && DBT_PROFILES_DIR=. dbt build --select tag:week05'
+```
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  python analytics/scripts/validate_metric_registry.py --json
+```
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  pytest tests/contract/test_week05_metric_contracts.py tests/integration/test_week05_metric_registry.py tests/integration/test_week05_kpi_query_tool.py -q
+```
+
+### 10.2 正向调用：生产口径指标
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  bash -lc 'PYTHONPATH=services/tool_api python -m app.kpi_query --payload '"'"'{
+    "actor_role": "instructor",
+    "actor_id": "instructor-local",
+    "trace_id": "trace-week05-v11-demo",
+    "purpose": "classroom_demo",
+    "metrics": ["avg_first_response_minutes", "avg_handle_time_minutes"],
+    "date_from": "2026-04-01",
+    "date_to": "2026-04-30",
+    "dimensions": ["product_line"],
+    "limit": 20
+  }'"'"''
+```
+
+预期：`allowed=true`，返回中包含 `audit_id`、`policy_applied` 和 `data_freshness`。
+
+### 10.3 负向调用：实验指标未确认
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  bash -lc 'PYTHONPATH=services/tool_api python -m app.kpi_query --example bad_experimental || true'
+```
+
+预期：`allowed=false`，`denial_code=EXPERIMENTAL_METRIC_NOT_ACKNOWLEDGED`。
+
+### 10.4 正向调用：显式确认实验指标
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  bash -lc 'PYTHONPATH=services/tool_api python -m app.kpi_query --payload '"'"'{
+    "actor_role": "instructor",
+    "metrics": ["first_resolution_rate"],
+    "date_from": "2026-04-01",
+    "date_to": "2026-04-30",
+    "include_experimental_metrics": true,
+    "limit": 20
+  }'"'"''
+```
+
+预期：`allowed=true`，`policy_applied` 包含 `experimental_metric_ack`。
+
+### 10.5 负向调用：support_ops 缺少组织范围
+
+```bash
+docker compose --profile tools --env-file infra/env/.env.local -f infra/docker-compose.yml run --rm devbox \
+  bash -lc 'PYTHONPATH=services/tool_api python -m app.kpi_query --example bad_org_scope || true'
+```
+
+预期：`allowed=false`，`denial_code=ORG_SCOPE_REQUIRED`。

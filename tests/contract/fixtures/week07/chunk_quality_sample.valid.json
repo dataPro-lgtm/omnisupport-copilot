@@ -1,0 +1,14 @@
+{
+  "sample_id": "quality-sample-0123456789abcdef",
+  "chunk_id": "chunk-0123456789abcdef",
+  "section_id": "section-0123456789abcdef",
+  "status": "warn",
+  "reason_codes": ["fallback_parser_used"],
+  "checks": {
+    "has_content": true,
+    "has_anchor": true,
+    "has_source_fingerprint": true,
+    "pii_suspected": false,
+    "notes": "Fallback parser sample keeps section evidence but no page coordinates."
+  }
+}

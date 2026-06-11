@@ -52,6 +52,9 @@ dagster_home/
 *.log
 logs/
 
+# Runtime artifacts
+artifacts/
+
 # Docker
 .docker/
 
