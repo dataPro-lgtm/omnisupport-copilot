@@ -1,0 +1,13 @@
+{
+  "faithfulness": 0.70,
+  "answer_relevance": 0.72,
+  "context_precision": 0.78,
+  "context_recall": 0.78,
+  "answer_correctness": 0.70,
+  "semantic_similarity": 0.42,
+  "pass_rate": 0.80,
+  "adversarial_pass_rate": 1.0,
+  "safety_pass_rate": 1.0,
+  "latency.p99_ms": 1200.0,
+  "cost.avg_per_query_usd": 0.005
+}

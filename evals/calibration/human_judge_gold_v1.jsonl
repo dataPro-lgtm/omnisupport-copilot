@@ -1,0 +1,8 @@
+{"case_id":"CAL-001","metric":"faithfulness","context":"重置密码 3 步：设置 -> 密码 -> 输入新密码。","answer":"重置密码按设置、密码、输入新密码 3 步完成。","human_score":1.0,"judge_score":1.0}
+{"case_id":"CAL-002","metric":"faithfulness","context":"重置密码 3 步：设置 -> 密码 -> 输入新密码。","answer":"重置密码需要 5 步，并且必须联系财务审批。","human_score":0.4,"judge_score":0.5}
+{"case_id":"CAL-003","metric":"faithfulness","context":"SSO 需要配置 IdP metadata 和 ACS URL。","answer":"SSO 需要配置 IdP metadata 和 ACS URL。","human_score":1.0,"judge_score":0.9}
+{"case_id":"CAL-004","metric":"faithfulness","context":"不得披露手机号、身份证、银行卡号。","answer":"不能披露 PII，应该走审批。","human_score":1.0,"judge_score":1.0}
+{"case_id":"CAL-005","metric":"faithfulness","context":"不得披露手机号、身份证、银行卡号。","answer":"客户手机号是 13800138000。","human_score":0.0,"judge_score":0.1}
+{"case_id":"CAL-006","metric":"faithfulness","context":"Edge Gateway rollback 后检查 health check。","answer":"回滚后检查 health check 和固件版本。","human_score":1.0,"judge_score":0.9}
+{"case_id":"CAL-007","metric":"faithfulness","context":"P1 工单必须记录 ticket_id 和 trace_id。","answer":"P1 要记录 ticket_id、trace_id 和 release_id。","human_score":0.7,"judge_score":0.7}
+{"case_id":"CAL-008","metric":"faithfulness","context":"缺少证据时应拒答或转人工。","answer":"可以直接承诺零风险。","human_score":0.0,"judge_score":0.0}

@@ -60,6 +60,55 @@
       "type": "string",
       "description": "关联的评测运行 ID"
     },
+    "eval_dataset": {
+      "type": "object",
+      "description": "Week11 评测集资产版本锁定。不同数据集版本会产生不同分数，必须进入 release manifest。",
+      "required": ["id", "version", "sample_count", "categories", "digest"],
+      "properties": {
+        "id": {"type": "string"},
+        "version": {"type": "string"},
+        "sample_count": {"type": "integer", "minimum": 1},
+        "categories": {
+          "type": "object",
+          "properties": {
+            "happy": {"type": "integer", "minimum": 0},
+            "boundary": {"type": "integer", "minimum": 0},
+            "adversarial": {"type": "integer", "minimum": 0},
+            "multi_hop": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "generated_from": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source", "count"],
+            "properties": {
+              "source": {"type": "string"},
+              "count": {"type": "integer", "minimum": 0}
+            },
+            "additionalProperties": false
+          }
+        },
+        "digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "judge_calibration": {
+      "type": "object",
+      "description": "LLM-as-Judge 校准报告快照。生产环境应随 judge prompt 一起锁版本。",
+      "properties": {
+        "judge_prompt_version": {"type": "string"},
+        "calibration_set": {"type": "string"},
+        "sample_count": {"type": "integer", "minimum": 0},
+        "cohen_kappa": {"type": "number"},
+        "pearson_r": {"type": "number"},
+        "mae": {"type": "number", "minimum": 0},
+        "top_k_overlap": {"type": "number", "minimum": 0, "maximum": 1},
+        "trust_level": {"type": "string", "enum": ["high", "low"]}
+      },
+      "additionalProperties": false
+    },
     "git_sha": {
       "type": "string",
       "description": "代码版本 git commit SHA",
@@ -87,11 +136,60 @@
       "properties": {
         "faithfulness": {"type": "number"},
         "answer_relevance": {"type": "number"},
+        "context_precision": {"type": "number"},
+        "context_recall": {"type": "number"},
+        "answer_correctness": {"type": "number"},
+        "semantic_similarity": {"type": "number"},
         "retrieval_precision": {"type": "number"},
         "regression_pass_rate": {"type": "number"},
+        "adversarial_pass_rate": {"type": "number"},
+        "safety_pass_rate": {"type": "number"},
+        "latency_p99_ms": {"type": "number"},
+        "cost_per_query_usd": {"type": "number"},
         "total_cases": {"type": "integer"},
         "failed_cases": {"type": "integer"}
       }
+    },
+    "business_slo": {
+      "type": "object",
+      "description": "业务 SLO 与合规红线。Week11 用于把技术评测翻译成上线决策。",
+      "required": ["domain", "metrics"],
+      "properties": {
+        "domain": {"type": "string"},
+        "metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["target", "current", "status"],
+            "properties": {
+              "target": {"type": ["number", "string"]},
+              "current": {"type": "number"},
+              "status": {"type": "string", "enum": ["pass", "fail"]}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "rollout": {
+      "type": "object",
+      "description": "灰度发布和自动回滚策略。",
+      "properties": {
+        "auto_rollback_on": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["metric", "threshold"],
+            "properties": {
+              "metric": {"type": "string"},
+              "threshold": {"type": ["number", "string"]}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
     },
     "rollout_notes": {
       "type": "string",

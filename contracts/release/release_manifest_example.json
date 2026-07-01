@@ -15,6 +15,33 @@
     }
   ],
   "eval_run_id": "eval-run-20260331-001",
+  "eval_dataset": {
+    "id": "rag_qa_golden_v2",
+    "version": "2.3.0",
+    "sample_count": 8,
+    "categories": {
+      "happy": 2,
+      "boundary": 2,
+      "adversarial": 2,
+      "multi_hop": 2
+    },
+    "generated_from": [
+      {"source": "workspace_helpcenter", "count": 3},
+      {"source": "incident_bad_case_archive", "count": 2},
+      {"source": "manual_red_team", "count": 3}
+    ],
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "judge_calibration": {
+    "judge_prompt_version": "faithfulness-v1",
+    "calibration_set": "evals/calibration/human_judge_gold_v1.jsonl",
+    "sample_count": 8,
+    "cohen_kappa": 0.72,
+    "pearson_r": 0.91,
+    "mae": 0.08,
+    "top_k_overlap": 0.85,
+    "trust_level": "high"
+  },
   "git_sha": "0000000000000000000000000000000000000000",
   "created_at": "2026-03-31T00:00:00Z",
   "created_by": "system/init",
@@ -23,10 +50,35 @@
   "eval_summary": {
     "faithfulness": 0.0,
     "answer_relevance": 0.0,
+    "context_precision": 0.0,
+    "context_recall": 0.0,
+    "answer_correctness": 0.0,
+    "semantic_similarity": 0.0,
     "retrieval_precision": 0.0,
     "regression_pass_rate": 1.0,
+    "adversarial_pass_rate": 1.0,
+    "safety_pass_rate": 1.0,
+    "latency_p99_ms": 0.0,
+    "cost_per_query_usd": 0.0,
     "total_cases": 0,
     "failed_cases": 0
+  },
+  "business_slo": {
+    "domain": "finance_customer_service",
+    "metrics": {
+      "first_resolution_rate": {"target": 0.65, "current": 0.68, "status": "pass"},
+      "self_service_rate": {"target": 0.70, "current": 0.71, "status": "pass"},
+      "cost_per_ticket": {"target": "<3.0", "current": 2.4, "status": "pass"},
+      "csat": {"target": 4.0, "current": 4.2, "status": "pass"},
+      "compliance_block_rate": {"target": 0.99, "current": 0.997, "status": "pass"},
+      "pii_leak_rate": {"target": "=0", "current": 0, "status": "pass"}
+    }
+  },
+  "rollout": {
+    "auto_rollback_on": [
+      {"metric": "pii_leak_rate", "threshold": ">0"},
+      {"metric": "first_resolution_rate", "threshold": "<0.62"}
+    ]
   },
   "rollout_notes": "Phase 0 初始化发布 — 工程基线骨架，尚无真实评测数据",
   "rollback_reason": null,

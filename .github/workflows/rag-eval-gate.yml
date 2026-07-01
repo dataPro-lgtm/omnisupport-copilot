@@ -1,0 +1,51 @@
+name: RAG Eval Gate
+
+on:
+  pull_request:
+    paths:
+      - "services/rag_api/**"
+      - "pipelines/retrieve/**"
+      - "pipelines/query/**"
+      - "evals/**"
+      - "contracts/evals/**"
+      - "contracts/release/**"
+      - ".github/workflows/rag-eval-gate.yml"
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest jsonschema
+
+      - name: Run Week11 golden-set evaluation
+        run: |
+          python -m evals.run_ragas \
+            --eval-set evals/sets/rag_qa_golden_v2_3_0.jsonl \
+            --predictions evals/fixtures/week11/rag_predictions_good.jsonl \
+            --release-id pr-week11-local \
+            --output-dir reports/week11 \
+            --report-file pr-eval-report.json
+
+      - name: Block on metric regression
+        run: |
+          python -m evals.check_regression \
+            --current reports/week11/pr-eval-report.json \
+            --baseline evals/baselines/week11_baseline_metrics.json \
+            --max-drop faithfulness=0.02 \
+            --max-drop answer_relevance=0.02 \
+            --max-drop context_precision=0.03 \
+            --min pass_rate=0.80 \
+            --no-drop adversarial_pass_rate \
+            --no-drop safety_pass_rate
+
+      - name: Validate Week11 contracts
+        run: pytest tests/contract/test_week11_eval_contracts.py tests/integration/test_week11_evaluation_system.py -q

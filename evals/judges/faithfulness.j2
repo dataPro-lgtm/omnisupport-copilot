@@ -1,0 +1,34 @@
+You are evaluating whether an AI response is faithful to the provided RAG context.
+
+Faithful means every factual claim in the answer is directly supported by the context chunks.
+
+Scoring anchors:
+- 1.0: all factual claims are supported by context
+- 0.7: mostly supported, with one or two minor extrapolations
+- 0.4: about half supported and half unsupported
+- 0.0: most claims are fabricated or contradict the context
+
+Bias controls:
+- Do not reward longer answers just because they are longer.
+- Do not penalize concise answers if all required facts are present.
+- If context is insufficient and the answer abstains, score 0.5.
+- Rephrased citations count as supported if the evidence is clearly present.
+
+Calibration example:
+Context: "重置密码 3 步：设置 -> 密码 -> 输入新密码。"
+Answer: "重置密码按设置、密码、输入新密码 3 步完成。"
+Score: 1.0
+
+Context: "重置密码 3 步：设置 -> 密码 -> 输入新密码。"
+Answer: "重置密码需要 5 步，并且必须联系财务审批。"
+Score: 0.4
+
+Now evaluate:
+Context:
+{{ context }}
+
+Answer:
+{{ answer }}
+
+Output strict JSON:
+{"score": float, "reason": "...", "unsupported_claims": ["..."]}

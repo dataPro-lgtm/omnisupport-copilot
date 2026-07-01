@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12",
+  "$id": "omni://contracts/evals/eval_dataset/v1",
+  "title": "EvalDatasetSample",
+  "description": "Week11 RAG/Agent evaluation sample. A dataset is stored as JSONL of this sample schema.",
+  "type": "object",
+  "required": [
+    "case_id",
+    "category",
+    "query",
+    "expected_answer",
+    "expected_keywords",
+    "expected_citation_ids",
+    "source_doc",
+    "doc_version"
+  ],
+  "properties": {
+    "case_id": {"type": "string", "pattern": "^[A-Z0-9_-]+$"},
+    "category": {"type": "string", "enum": ["happy", "boundary", "adversarial", "multi_hop"]},
+    "query": {"type": "string", "minLength": 1},
+    "expected_answer": {"type": "string", "minLength": 1},
+    "expected_keywords": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "expected_context_keywords": {"type": "array", "items": {"type": "string"}},
+    "expected_citation_ids": {"type": "array", "items": {"type": "string"}},
+    "source_doc": {"type": "string"},
+    "doc_version": {"type": "string"},
+    "product_line": {"type": "string"},
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "thresholds": {
+      "type": "object",
+      "properties": {
+        "faithfulness": {"type": "number", "minimum": 0, "maximum": 1},
+        "answer_relevance": {"type": "number", "minimum": 0, "maximum": 1},
+        "context_precision": {"type": "number", "minimum": 0, "maximum": 1},
+        "context_recall": {"type": "number", "minimum": 0, "maximum": 1},
+        "answer_correctness": {"type": "number", "minimum": 0, "maximum": 1},
+        "semantic_similarity": {"type": "number", "minimum": 0, "maximum": 1}
+      },
+      "additionalProperties": false
+    },
+    "should_abstain": {"type": "boolean"},
+    "forbidden_phrases": {"type": "array", "items": {"type": "string"}},
+    "metadata": {"type": "object"}
+  },
+  "additionalProperties": false
+}
+

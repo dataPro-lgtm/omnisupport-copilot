@@ -236,7 +236,10 @@ omnisupport-copilot/
 | W08 | 🔄 | 混合检索、RAG API、citation contract、smoke eval |
 | W09 | 🔄 | Agent Skill Pack、只读 Skill Registry、OpenAI/MCP 导出、release manifest 绑定 |
 | W10 | 🔄 | Tool Contract Registry、受控写动作、HITL checkpoint、fallback、action lineage |
-| W11-15 | 📅 | 评测、Tracing、GraphRAG、治理、Capstone |
+| W11 | 🔄 | Golden set、RAGAS 风格 6 指标、Judge 校准、回归门禁、业务 SLO |
+| W12-15 | 📅 | Tracing、GraphRAG、治理、Capstone |
+
+Week11 评测体系入口见 [runbooks/week11-evaluation-system.md](runbooks/week11-evaluation-system.md)。
 
 ## Week04 Lakehouse 最小闭环
 

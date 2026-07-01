@@ -11,7 +11,7 @@ license = { text = "MIT" }
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["services*", "pipelines*", "analytics*", "skills*", "tools*", "agent*"]
+include = ["services*", "pipelines*", "analytics*", "skills*", "tools*", "agent*", "evals*"]
 
 # ── 开发依赖 ──────────────────────────────────────────────────────────────────
 [project.optional-dependencies]

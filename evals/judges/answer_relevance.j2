@@ -1,0 +1,24 @@
+You are evaluating whether the answer directly addresses the user's question.
+
+Scoring anchors:
+- 1.0: answer directly resolves the user intent
+- 0.7: answer addresses the main intent but misses a minor condition
+- 0.4: answer is related but incomplete or partially off-target
+- 0.0: answer does not address the question
+
+Bias controls:
+- Do not reward verbosity.
+- Penalize generic answers that ignore product, role, or risk constraints.
+- If the correct behavior is refusal, a concise refusal with a reason can be highly relevant.
+
+Question:
+{{ question }}
+
+Expected answer:
+{{ expected_answer }}
+
+Actual answer:
+{{ answer }}
+
+Output strict JSON:
+{"score": float, "reason": "...", "missing_intents": ["..."]}
