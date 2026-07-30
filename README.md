@@ -196,6 +196,7 @@ DataGrip / DBeaver 连接容器内 PostgreSQL：
 - 横切能力如何在 `docs/`、`tests/`、`runbooks/`、`observability/`、`contracts/release/` 之间复用
 
 阅读建议：
+- 想从宏观架构、模块边界、对象生命周期一路读到端到端代码链路：看 [学员代码阅读参考手册](docs/guides/omnisupport-copilot-student-code-reading-reference.docx)
 - 想先理解系统能力边界：看上面的“七层架构总览”
 - 想理解本地怎么跑起来：看上面的“本地部署拓扑”
 - 想理解课程与主仓库如何逐周对齐：看这张“Repo 逻辑图”
@@ -257,7 +258,9 @@ omnisupport-copilot/
 │   ├── contract/               # JSON Schema 契约测试
 │   ├── integration/            # API smoke tests
 │   └── eval_regression/        # 回归评测测试
-├── docs/blueprints/            # 项目蓝图 + 风险边界清单
+├── docs/
+│   ├── blueprints/             # 项目蓝图 + 风险边界清单
+│   └── guides/                 # 学员整项目代码阅读参考资料
 └── runbooks/                   # 运维操作手册
 ```
 
